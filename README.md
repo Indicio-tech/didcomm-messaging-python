@@ -1,1 +1,1 @@
-# didcomm-askar
+# didcomm-messaging
