@@ -5,7 +5,7 @@
 groups = ["default", "askar", "dev"]
 strategy = ["cross_platform"]
 lock_version = "4.4"
-content_hash = "sha256:e5d8a2343008d2e22df619a4293c666592ccf53a0945cc2d6ad7936dd0bba733"
+content_hash = "sha256:2324344659e9a3863fcaf4b0107676058045edb3af8ae85c88c3222c6afd4dfa"
 
 [[package]]
 name = "aries-askar"
@@ -19,6 +19,16 @@ files = [
     {file = "aries_askar-0.2.9-py3-none-macosx_10_9_universal2.whl", hash = "sha256:e8231845ab5eee3be08070c3d005a1be22da2c3fdf84b6adc06e97ee47abcd26"},
     {file = "aries_askar-0.2.9-py3-none-manylinux2014_aarch64.whl", hash = "sha256:73a4b9384b762423da563ebbe72abc8edf4c11416150148b7b758afd98ef7758"},
     {file = "aries_askar-0.2.9-py3-none-manylinux2014_x86_64.whl", hash = "sha256:9084f10f193a331275c6af72235ecc816063dafe71dc3eca5c920bf30ff069d1"},
+]
+
+[[package]]
+name = "base58"
+version = "2.1.1"
+requires_python = ">=3.5"
+summary = "Base58 and Base58Check implementation."
+files = [
+    {file = "base58-2.1.1-py3-none-any.whl", hash = "sha256:11a36f4d3ce51dfc1043f3218591ac4eb1ceb172919cebe05b52a5bcc8d245c2"},
+    {file = "base58-2.1.1.tar.gz", hash = "sha256:c5d0cb3f5b6e81e8e35da5754388ddcc6d0d14b6c6a132cb93d69ed580a7278c"},
 ]
 
 [[package]]
