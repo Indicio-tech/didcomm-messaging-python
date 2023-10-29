@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "askar", "dev"]
+groups = ["default", "askar", "dev", "did_peer"]
 strategy = ["cross_platform"]
 lock_version = "4.4"
-content_hash = "sha256:2324344659e9a3863fcaf4b0107676058045edb3af8ae85c88c3222c6afd4dfa"
+content_hash = "sha256:117b703372de1000f550fc2e84ae83bc785012b0b095480d14943c549bed0ca9"
 
 [[package]]
 name = "aries-askar"
@@ -105,6 +105,32 @@ files = [
 ]
 
 [[package]]
+name = "did-peer-2"
+version = "0.1.2"
+requires_python = ">=3.9"
+summary = "An implementation of did:peer:2"
+dependencies = [
+    "base58>=2.1.1",
+]
+files = [
+    {file = "did_peer_2-0.1.2-py3-none-any.whl", hash = "sha256:d5908cda2d52b7c34428a421044507d7847fd79b78dc8360441c408f4507d612"},
+    {file = "did_peer_2-0.1.2.tar.gz", hash = "sha256:af8623f62022732e9fadc0289dfb886fd8267767251c4fa0b63694ecd29a7086"},
+]
+
+[[package]]
+name = "did-peer-4"
+version = "0.1.2"
+requires_python = ">=3.9"
+summary = "An implementation of did:peer:4"
+dependencies = [
+    "base58>=2.1.1",
+]
+files = [
+    {file = "did_peer_4-0.1.2-py3-none-any.whl", hash = "sha256:b619230bb8b66ef47d25c9ecedbb806d04582245a4a5aaaa5402c6f52627c462"},
+    {file = "did_peer_4-0.1.2.tar.gz", hash = "sha256:e211a8b5d2b84552460000dd81445e93a9574d83bbd8003a30e5bdab2eba469a"},
+]
+
+[[package]]
 name = "distlib"
 version = "0.3.7"
 summary = "Distribution utilities"
@@ -141,6 +167,16 @@ summary = "File identification library for Python"
 files = [
     {file = "identify-2.5.30-py2.py3-none-any.whl", hash = "sha256:afe67f26ae29bab007ec21b03d4114f41316ab9dd15aa8736a167481e108da54"},
     {file = "identify-2.5.30.tar.gz", hash = "sha256:f302a4256a15c849b91cfcdcec052a8ce914634b2f77ae87dad29cd749f2d88d"},
+]
+
+[[package]]
+name = "inflection"
+version = "0.5.1"
+requires_python = ">=3.5"
+summary = "A port of Ruby on Rails inflector to Python"
+files = [
+    {file = "inflection-0.5.1-py2.py3-none-any.whl", hash = "sha256:f38b2b640938a4f35ade69ac3d053042959b62a0f1076a5bbaa1b9526605a8a2"},
+    {file = "inflection-0.5.1.tar.gz", hash = "sha256:1a29730d366e996aaacffb2f1f1cb9593dc38e2ddd30c91250c6dde09ea9b417"},
 ]
 
 [[package]]
@@ -231,6 +267,55 @@ dependencies = [
 files = [
     {file = "pre_commit-3.5.0-py2.py3-none-any.whl", hash = "sha256:841dc9aef25daba9a0238cd27984041fa0467b4199fc4852e27950664919f660"},
     {file = "pre_commit-3.5.0.tar.gz", hash = "sha256:5804465c675b659b0862f07907f96295d490822a450c4c40e747d0b1c6ebcb32"},
+]
+
+[[package]]
+name = "pydantic"
+version = "1.10.13"
+requires_python = ">=3.7"
+summary = "Data validation and settings management using python type hints"
+dependencies = [
+    "typing-extensions>=4.2.0",
+]
+files = [
+    {file = "pydantic-1.10.13-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:efff03cc7a4f29d9009d1c96ceb1e7a70a65cfe86e89d34e4a5f2ab1e5693737"},
+    {file = "pydantic-1.10.13-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:3ecea2b9d80e5333303eeb77e180b90e95eea8f765d08c3d278cd56b00345d01"},
+    {file = "pydantic-1.10.13-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1740068fd8e2ef6eb27a20e5651df000978edce6da6803c2bef0bc74540f9548"},
+    {file = "pydantic-1.10.13-cp310-cp310-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:84bafe2e60b5e78bc64a2941b4c071a4b7404c5c907f5f5a99b0139781e69ed8"},
+    {file = "pydantic-1.10.13-cp310-cp310-musllinux_1_1_i686.whl", hash = "sha256:bc0898c12f8e9c97f6cd44c0ed70d55749eaf783716896960b4ecce2edfd2d69"},
+    {file = "pydantic-1.10.13-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:654db58ae399fe6434e55325a2c3e959836bd17a6f6a0b6ca8107ea0571d2e17"},
+    {file = "pydantic-1.10.13-cp310-cp310-win_amd64.whl", hash = "sha256:75ac15385a3534d887a99c713aa3da88a30fbd6204a5cd0dc4dab3d770b9bd2f"},
+    {file = "pydantic-1.10.13-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:c553f6a156deb868ba38a23cf0df886c63492e9257f60a79c0fd8e7173537653"},
+    {file = "pydantic-1.10.13-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:5e08865bc6464df8c7d61439ef4439829e3ab62ab1669cddea8dd00cd74b9ffe"},
+    {file = "pydantic-1.10.13-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e31647d85a2013d926ce60b84f9dd5300d44535a9941fe825dc349ae1f760df9"},
+    {file = "pydantic-1.10.13-cp311-cp311-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:210ce042e8f6f7c01168b2d84d4c9eb2b009fe7bf572c2266e235edf14bacd80"},
+    {file = "pydantic-1.10.13-cp311-cp311-musllinux_1_1_i686.whl", hash = "sha256:8ae5dd6b721459bfa30805f4c25880e0dd78fc5b5879f9f7a692196ddcb5a580"},
+    {file = "pydantic-1.10.13-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:f8e81fc5fb17dae698f52bdd1c4f18b6ca674d7068242b2aff075f588301bbb0"},
+    {file = "pydantic-1.10.13-cp311-cp311-win_amd64.whl", hash = "sha256:61d9dce220447fb74f45e73d7ff3b530e25db30192ad8d425166d43c5deb6df0"},
+    {file = "pydantic-1.10.13-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:8ef467901d7a41fa0ca6db9ae3ec0021e3f657ce2c208e98cd511f3161c762c6"},
+    {file = "pydantic-1.10.13-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:968ac42970f57b8344ee08837b62f6ee6f53c33f603547a55571c954a4225691"},
+    {file = "pydantic-1.10.13-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9849f031cf8a2f0a928fe885e5a04b08006d6d41876b8bbd2fc68a18f9f2e3fd"},
+    {file = "pydantic-1.10.13-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:56e3ff861c3b9c6857579de282ce8baabf443f42ffba355bf070770ed63e11e1"},
+    {file = "pydantic-1.10.13-cp39-cp39-musllinux_1_1_i686.whl", hash = "sha256:9f00790179497767aae6bcdc36355792c79e7bbb20b145ff449700eb076c5f96"},
+    {file = "pydantic-1.10.13-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:75b297827b59bc229cac1a23a2f7a4ac0031068e5be0ce385be1462e7e17a35d"},
+    {file = "pydantic-1.10.13-cp39-cp39-win_amd64.whl", hash = "sha256:e70ca129d2053fb8b728ee7d1af8e553a928d7e301a311094b8a0501adc8763d"},
+    {file = "pydantic-1.10.13-py3-none-any.whl", hash = "sha256:b87326822e71bd5f313e7d3bfdc77ac3247035ac10b0c0618bd99dcf95b1e687"},
+    {file = "pydantic-1.10.13.tar.gz", hash = "sha256:32c8b48dcd3b2ac4e78b0ba4af3a2c2eb6048cb75202f0ea7b34feb740efc340"},
+]
+
+[[package]]
+name = "pydid"
+version = "0.4.2"
+requires_python = ">=3.8.0,<4.0.0"
+summary = "Python library for validating, constructing, and representing DIDs and DID Documents"
+dependencies = [
+    "inflection<0.6.0,>=0.5.1",
+    "pydantic<2.0.0,>=1.10.0",
+    "typing-extensions<5.0.0,>=4.5.0",
+]
+files = [
+    {file = "pydid-0.4.2-py3-none-any.whl", hash = "sha256:45994eb14be745da421f31c55f5c436976d5b4ec5fb704e4a9346c59837fa2f2"},
+    {file = "pydid-0.4.2.tar.gz", hash = "sha256:2d2a4a9291f6ac99962aa7152a27b47a9582d13032da4bbb88e9232d513f855f"},
 ]
 
 [[package]]

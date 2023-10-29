@@ -1,15 +1,22 @@
 """Askar backend for DIDComm Messaging."""
 from collections import OrderedDict
 import json
-from typing import Mapping, Optional, Union
-from didcomm_messaging.crypto import KMS, SecretsManager
+from typing import Mapping, Optional, Sequence, Union
+
+from pydid import VerificationMethod
+from didcomm_messaging.crypto import SecretsManager
 from didcomm_messaging.jwe import (
     JweBuilder,
     JweEnvelope,
     JweRecipient,
     b64url,
 )
-from didcomm_messaging.kms import CryptoService, CryptoServiceError, PublicKey, SecretKey
+from didcomm_messaging.crypto import (
+    CryptoService,
+    CryptoServiceError,
+    PublicKey,
+    SecretKey,
+)
 from didcomm_messaging.multiformats import multibase, multicodec
 
 try:
@@ -102,39 +109,27 @@ class AskarKey(PublicKey):
         raise ValueError("Failed to parse key")
 
     @classmethod
-    def from_verification_method(cls, vm: dict) -> "PublicKey":
+    def from_verification_method(cls, vm: VerificationMethod) -> "AskarKey":
         """Create a Key instance from a DID Document Verification Method."""
-        vm_type = vm.get("type")
-        ident = vm.get("id")
-        controller = vm.get("controller")
-        if not vm_type:
-            raise ValueError("Verification method missing type")
-
-        if not ident:
-            raise ValueError("Verification method missing id")
-
-        if not controller:
-            raise ValueError("Verification method missing controller")
-
-        if ident.startswith("#"):
-            kid = f"{controller}#{ident}"
+        if not vm.id.did:
+            kid = vm.id.as_absolute(vm.controller)
         else:
-            kid = ident
+            kid = vm.id
 
-        if vm_type == "Multikey":
-            multikey = vm.get("publicKeyMultiBase")
+        if vm.type == "Multikey":
+            multikey = vm.public_key_multibase
             if not multikey:
                 raise ValueError("Multikey verification method missing key")
 
             key = cls._multikey_to_key(multikey)
             return cls(key, kid)
 
-        alg = cls.type_to_alg.get(vm_type)
+        alg = cls.type_to_alg.get(vm.type)
         if not alg:
             raise ValueError("Unsupported verification method type: {vm_type}")
 
-        base58 = vm.get("publicKeyBase58")
-        multi = vm.get("publicKeyMultiBase")
+        base58 = vm.public_key_base58
+        multi = vm.public_key_multibase
         key = cls._expected_alg_and_material_to_key(
             alg, public_key_base58=base58, public_key_multibase=multi
         )
@@ -165,12 +160,11 @@ class AskarSecretKey(SecretKey):
         return self._kid
 
 
-
 class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
-    """Askar backend for DIDComm Messaging."""
+    """CryptoService backend implemented using Askar."""
 
     async def ecdh_es_encrypt(
-        self, to_keys: Mapping[str, AskarKey], message: bytes
+        self, to_keys: Sequence[AskarKey], message: bytes
     ) -> bytes:
         """Encode a message into DIDComm v2 anonymous encryption."""
         builder = JweBuilder(with_flatten_recipients=False)
@@ -188,7 +182,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         except AskarError:
             raise CryptoServiceError("Error creating content encryption key")
 
-        for kid, recip_key in to_keys.items():
+        for recip_key in to_keys:
             try:
                 epk = Key.generate(recip_key.key.algorithm, ephemeral=True)
             except AskarError:
@@ -199,7 +193,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
             builder.add_recipient(
                 JweRecipient(
                     encrypted_key=enc_key.ciphertext,
-                    header={"kid": kid, "epk": epk.get_jwk_public()},
+                    header={"kid": recip_key.kid, "epk": epk.get_jwk_public()},
                 )
             )
 
@@ -222,7 +216,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
     async def ecdh_es_decrypt(
         self,
         wrapper: Union[JweEnvelope, str, bytes],
-        recip_key: AskarKey,
+        recip_key: AskarSecretKey,
     ) -> bytes:
         """Decode a message from DIDComm v2 anonymous encryption."""
         if isinstance(wrapper, bytes):
@@ -235,7 +229,9 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         if alg_id and alg_id in ("ECDH-ES+A128KW", "ECDH-ES+A256KW"):
             wrap_alg = alg_id[8:]
         else:
-            raise CryptoServiceError(f"Missing or unsupported ECDH-ES algorithm: {alg_id}")
+            raise CryptoServiceError(
+                f"Missing or unsupported ECDH-ES algorithm: {alg_id}"
+            )
 
         recip = wrapper.get_recipient(recip_key.kid)
         if not recip:
@@ -249,7 +245,9 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
             "A256CBC-HS512",
             "XC20P",
         ):
-            raise CryptoServiceError(f"Unsupported ECDH-ES content encryption: {enc_alg}")
+            raise CryptoServiceError(
+                f"Unsupported ECDH-ES content encryption: {enc_alg}"
+            )
 
         epk_header = recip.header.get("epk")
         if not epk_header:
@@ -289,9 +287,8 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
 
     async def ecdh_1pu_encrypt(
         self,
-        to_keys: Mapping[str, AskarKey],
-        sender_kid: str,
-        sender_key: AskarKey,
+        to_keys: Sequence[AskarKey],
+        sender_key: AskarSecretKey,
         message: bytes,
     ) -> bytes:
         """Encode a message into DIDComm v2 authenticated encryption."""
@@ -316,15 +313,15 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         except AskarError:
             raise CryptoServiceError("Error creating ephemeral key")
 
-        apu = b64url(sender_kid)
+        apu = b64url(sender_key.kid)
         apv = []
-        for kid, recip_key in to_keys.items():
+        for recip_key in to_keys:
             if agree_alg:
                 if agree_alg != recip_key.key.algorithm:
                     raise CryptoServiceError("Recipient key types must be consistent")
             else:
                 agree_alg = recip_key.key.algorithm
-            apv.append(kid)
+            apv.append(recip_key.kid)
         apv.sort()
         apv = b64url(".".join(apv))
 
@@ -336,7 +333,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
                     ("apu", apu),
                     ("apv", apv),
                     ("epk", json.loads(epk.get_jwk_public())),
-                    ("skid", sender_kid),
+                    ("skid", sender_key.kid),
                 ]
             )
         )
@@ -346,12 +343,14 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
             raise CryptoServiceError("Error encrypting message payload")
         builder.set_payload(payload.ciphertext, payload.nonce, payload.tag)
 
-        for kid, recip_key in to_keys.items():
+        for recip_key in to_keys:
             enc_key = ecdh.Ecdh1PU(alg_id, apu, apv).sender_wrap_key(
                 wrap_alg, epk, sender_key.key, recip_key.key, cek, cc_tag=payload.tag
             )
             builder.add_recipient(
-                JweRecipient(encrypted_key=enc_key.ciphertext, header={"kid": kid})
+                JweRecipient(
+                    encrypted_key=enc_key.ciphertext, header={"kid": recip_key.kid}
+                )
             )
 
         return builder.build().to_json().encode("utf-8")
@@ -359,7 +358,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
     async def ecdh_1pu_decrypt(
         self,
         wrapper: Union[JweEnvelope, str, bytes],
-        recip_key: AskarKey,
+        recip_key: AskarSecretKey,
         sender_key: AskarKey,
     ):
         """Decode a message from DIDComm v2 authenticated encryption."""
@@ -376,7 +375,9 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
 
         enc_alg = wrapper.protected.get("enc")
         if not enc_alg or enc_alg not in ("A128CBC-HS256", "A256CBC-HS512"):
-            raise CryptoServiceError(f"Unsupported ECDH-1PU content encryption: {enc_alg}")
+            raise CryptoServiceError(
+                f"Unsupported ECDH-1PU content encryption: {enc_alg}"
+            )
 
         recip = wrapper.get_recipient(recip_key.kid)
         if not recip:
@@ -420,14 +421,20 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
 
         return plaintext
 
-class AskarWithStore(KMS, AskarCryptoService, SecretsManager):
+    @classmethod
+    def verification_method_to_public_key(cls, vm: VerificationMethod) -> AskarKey:
+        """Convert a verification method into a public key."""
+        return AskarKey.from_verification_method(vm)
+
+
+class AskarSecretsManager(SecretsManager[AskarSecretKey]):
     """Askar KMS with an Askar Store for secrets management."""
 
     def __init__(self, store: Store):
         """Initialize a new Askar instance."""
         self.store = store
 
-    async def fetch_key_by_kid(self, kid: str) -> Optional[AskarSecretKey]:
+    async def get_secret_by_kid(self, kid: str) -> Optional[AskarSecretKey]:
         """Fetch a public key by key ID."""
         async with self.store.session() as session:
             key_entry = await session.fetch_key(kid)
@@ -436,15 +443,3 @@ class AskarWithStore(KMS, AskarCryptoService, SecretsManager):
 
         # cached_property doesn't play nice with pyright
         return AskarKey(key_entry.key, kid)  # type: ignore
-
-
-class AskarDelegatedSecrets(KMS, AskarCryptoService, SecretsManager):
-    """Askar KMS with delegated secrets management."""
-
-    def __init__(self, secrets: SecretsManager):
-        """Initialize a new AskarDelegatedSecrets instance."""
-        self.secrets = secrets
-
-    async def get_secret_by_kid(self, kid: str) -> Optional[SecretKey]:
-        """Get a secret key by its kid."""
-        return await self.secrets.get_secret_by_kid(kid)

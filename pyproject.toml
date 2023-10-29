@@ -6,8 +6,8 @@ authors = [
     {name = "Daniel Bluhm", email = "dbluhm@pm.me"},
 ]
 dependencies = [
-    "aries-askar>=0.2.9",
     "base58>=2.1.1",
+    "pydid>=0.4.2",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
@@ -16,6 +16,10 @@ license = {text = "Apache-2.0"}
 [project.optional-dependencies]
 askar = [
     "aries-askar>=0.2.9",
+]
+did_peer = [
+    "did-peer-2>=0.1.2",
+    "did-peer-4>=0.1.2",
 ]
 [build-system]
 requires = ["pdm-backend"]

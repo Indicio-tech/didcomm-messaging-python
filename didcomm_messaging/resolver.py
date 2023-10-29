@@ -1,3 +1,0 @@
-"""DID Resolver."""
-
-
