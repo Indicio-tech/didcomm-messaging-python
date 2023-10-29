@@ -5,19 +5,19 @@ from typing import Dict
 from pydid import DIDDocument, DIDUrl, Resource, VerificationMethod
 
 
-class ResolutionError(Exception):
+class DIDResolutionError(Exception):
     """Represents an error from a DID Resolver."""
 
 
-class DIDNotFound(ResolutionError):
+class DIDNotFound(DIDResolutionError):
     """Represents a DID not found error."""
 
 
-class DIDMethodNotSupported(ResolutionError):
+class DIDMethodNotSupported(DIDResolutionError):
     """Represents a DID method not supported error."""
 
 
-class Resolver(ABC):
+class DIDResolver(ABC):
     """DID Resolver interface."""
 
     @abstractmethod
@@ -33,7 +33,7 @@ class Resolver(ABC):
         """Resolve a DID URL and dereference the identifier."""
         url = DIDUrl.parse(did_url)
         if not url.did:
-            raise ResolutionError("Invalid DID URL; must be absolute")
+            raise DIDResolutionError("Invalid DID URL; must be absolute")
 
         doc = await self.resolve_and_parse(url.did)
         return doc.dereference(url)
@@ -44,15 +44,15 @@ class Resolver(ABC):
         """Resolve a DID URL and dereference the identifier."""
         resource = await self.resolve_and_dereference(did_url)
         if not isinstance(resource, VerificationMethod):
-            raise ResolutionError("Resource is not a verification method")
+            raise DIDResolutionError("Resource is not a verification method")
 
         return resource
 
 
-class PrefixResolver(Resolver):
+class PrefixResolver(DIDResolver):
     """DID Resolver delegates to sub-resolvers by DID prefix."""
 
-    def __init__(self, resolvers: Dict[str, Resolver]):
+    def __init__(self, resolvers: Dict[str, DIDResolver]):
         """Initialize the resolver."""
         self.resolvers = resolvers
 

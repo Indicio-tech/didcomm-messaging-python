@@ -1,6 +1,6 @@
 """did:peer resolver."""
 
-from didcomm_messaging.resolver import Resolver
+from didcomm_messaging.resolver import DIDResolver
 
 try:
     from did_peer_2 import resolve as resolve_peer_2
@@ -12,7 +12,7 @@ except ImportError:
     )
 
 
-class Peer2(Resolver):
+class Peer2(DIDResolver):
     """did:peer:2 resolver."""
 
     async def resolve(self, did: str) -> dict:
@@ -20,7 +20,7 @@ class Peer2(Resolver):
         return resolve_peer_2(did)
 
 
-class Peer4(Resolver):
+class Peer4(DIDResolver):
     """did:peer:4 resolver."""
 
     async def resolve(self, did: str) -> dict:

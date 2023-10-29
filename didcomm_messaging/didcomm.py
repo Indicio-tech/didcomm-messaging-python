@@ -7,7 +7,7 @@ from typing import Generic, Literal, Optional, Sequence, Union
 from pydid import DIDUrl, VerificationMethod
 from didcomm_messaging.crypto import P, S, CryptoService, SecretsManager
 from didcomm_messaging.jwe import JweEnvelope, from_b64url
-from didcomm_messaging.resolver import Resolver
+from didcomm_messaging.resolver import DIDResolver
 
 
 @dataclass
@@ -24,12 +24,12 @@ class DIDCommMessagingError(Exception):
     """Represents an error from the DIDComm Messaging interface."""
 
 
-class DIDCommMessaging(Generic[P, S]):
+class PackagingService(Generic[P, S]):
     """DIDComm Messaging interface."""
 
     def __init__(
         self,
-        resolver: Resolver,
+        resolver: DIDResolver,
         crypto: CryptoService[P, S],
         secrets: SecretsManager[S],
     ):
