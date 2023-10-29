@@ -1,20 +1,22 @@
 """Class DIDComm Messaging interface."""
 
 
-from typing import Generic, Literal, NamedTuple, Optional, Sequence, Union
+from dataclasses import dataclass
+from typing import Generic, Literal, Optional, Sequence, Union
 
 from pydid import DIDUrl, VerificationMethod
-from didcomm_messaging.crypto import P, S, CryptoService, SecretKey, SecretsManager
+from didcomm_messaging.crypto import P, S, CryptoService, SecretsManager
 from didcomm_messaging.jwe import JweEnvelope, from_b64url
 from didcomm_messaging.resolver import Resolver
 
 
-class PackedMessageMetadata(NamedTuple):
+@dataclass
+class PackedMessageMetadata(Generic[S]):
     """Unpack result."""
 
     wrapper: JweEnvelope
     method: Literal["ECDH-ES", "ECDH-1PU"]
-    recip_key: SecretKey
+    recip_key: S
     sender_kid: Optional[str]
 
 
@@ -36,7 +38,7 @@ class DIDCommMessaging(Generic[P, S]):
         self.crypto = crypto
         self.secrets = secrets
 
-    async def extract_packed_message_metadata(
+    async def extract_packed_message_metadata(  # noqa: C901
         self, enc_message: Union[str, bytes]
     ) -> PackedMessageMetadata:
         """Extract metadata from a packed DIDComm message."""
@@ -101,9 +103,7 @@ class DIDCommMessaging(Generic[P, S]):
             enc_message, metadata.recip_key, sender_key
         )
 
-    async def recip_for_kid_or_default_for_did(
-        self, kid_or_did: str
-    ) -> P:
+    async def recip_for_kid_or_default_for_did(self, kid_or_did: str) -> P:
         """Resolve a verification method for a kid or return default recip."""
         if "#" in kid_or_did:
             vm = await self.resolver.resolve_and_dereference_verification_method(
@@ -128,6 +128,31 @@ class DIDCommMessaging(Generic[P, S]):
 
         return self.crypto.verification_method_to_public_key(vm)
 
+    async def default_sender_kid_for_did(self, did: str) -> str:
+        """Determine the kid of the default sender key for a DID."""
+        if "#" in did:
+            return did
+
+        doc = await self.resolver.resolve_and_parse(did)
+        if not doc.key_agreement:
+            raise DIDCommMessagingError(
+                "No key agreement methods found; cannot determine recipient"
+            )
+
+        default = doc.key_agreement[0]
+        if isinstance(default, DIDUrl):
+            vm = doc.dereference(default)
+            if not isinstance(vm, VerificationMethod):
+                raise DIDCommMessagingError(
+                    f"Expected verification method, found: {type(vm)}"
+                )
+        else:
+            vm = default
+
+        if not vm.id.did:
+            return vm.id.as_absolute(vm.controller)
+        return vm.id
+
     async def pack(
         self,
         message: bytes,
@@ -136,33 +161,15 @@ class DIDCommMessaging(Generic[P, S]):
         **options,
     ):
         """Pack a DIDComm message."""
-        recip_keys = [
-            await self.recip_for_kid_or_default_for_did(kid) for kid in to
-        ]
-        sender_key = await self.secrets.get_secret_by_kid(frm) if frm else None
+        recip_keys = [await self.recip_for_kid_or_default_for_did(kid) for kid in to]
+        sender_kid = await self.default_sender_kid_for_did(frm) if frm else None
+        sender_key = (
+            await self.secrets.get_secret_by_kid(sender_kid) if sender_kid else None
+        )
+        if frm and not sender_key:
+            raise DIDCommMessagingError("No sender key found")
 
         if sender_key:
-            return await self.crypto.ecdh_1pu_encrypt(
-                recip_keys, sender_key, message
-            )
+            return await self.crypto.ecdh_1pu_encrypt(recip_keys, sender_key, message)
         else:
             return await self.crypto.ecdh_es_encrypt(recip_keys, message)
-
-
-async def main():
-    from aries_askar import Store
-    from didcomm_messaging.askar import AskarCryptoService, AskarSecretsManager
-    from didcomm_messaging.resolver.peer import Peer2, Peer4
-    from didcomm_messaging.resolver import PrefixResolver
-
-    store = await Store.open("sqlite:///:memory:")
-    kms = AskarSecretsManager(store)
-    crypto = AskarCryptoService()
-    didcomm = DIDCommMessaging(
-        PrefixResolver(
-            {
-                "did:peer:2": Peer2(),
-                "did:peer:4": Peer4()
-            }
-        ), crypto, kms
-    )

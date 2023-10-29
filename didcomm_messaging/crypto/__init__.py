@@ -6,7 +6,7 @@ from typing import Generic, Optional, Sequence, TypeVar, Union
 
 from pydid import VerificationMethod
 
-from didcomm_messaging.jwe import JweEnvelope, from_b64url
+from didcomm_messaging.jwe import JweEnvelope
 
 
 class CryptoServiceError(Exception):
@@ -34,6 +34,7 @@ class PublicKey(ABC):
 
 class SecretKey(ABC):
     """Secret Key Type."""
+
     @property
     @abstractmethod
     def kid(self) -> str:

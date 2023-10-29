@@ -46,11 +46,14 @@ class JweRecipient:
         if "encrypted_key" not in entry:
             raise ValueError("Invalid JWE recipient: missing encrypted_key")
 
+        encrypyted_key = from_b64url(entry["encrypted_key"])
+
         if "header" in entry:
             if not isinstance(entry["header"], dict):
                 raise ValueError("Invalid JWE recipient: invalid header")
-            return cls(encrypted_key=entry["encrypted_key"], header=entry["header"])
-        return cls(**entry)
+            return cls(encrypted_key=encrypyted_key, header=entry["header"])
+
+        return cls(encrypted_key=encrypyted_key)
 
     def serialize(self) -> dict:
         """Serialize the JWE recipient to a mapping."""
@@ -75,6 +78,7 @@ class JweBuilder:
         self._with_flatten_recipients = with_flatten_recipients
         self._recipients: List[JweRecipient] = []
         self._protected: Optional[OrderedDict] = None
+        self._unprotected: Optional[OrderedDict] = None
         self._protected_b64: Optional[bytes] = None
         self._ciphertext: Optional[bytes] = None
         self._iv: Optional[bytes] = None
@@ -137,9 +141,6 @@ class JweBuilder:
         if not self._tag:
             raise ValueError("Missing tag for JWE")
 
-        if not self._aad:
-            raise ValueError("Missing additional authenticated data for JWE")
-
         if not self._recipients:
             raise ValueError("Missing recipients for JWE")
 
@@ -158,6 +159,8 @@ class JweBuilder:
             aad=self._aad,
             unprotected=self._unprotected,
             recipients=self._recipients,
+            with_flatten_recipients=self._with_flatten_recipients,
+            with_protected_recipients=self._with_protected_recipients,
         )
 
 
@@ -172,7 +175,7 @@ class JweEnvelope:
     iv: bytes
     tag: bytes
     aad: Optional[bytes] = None
-    unprotected: dict = field(default_factory=OrderedDict)
+    unprotected: Optional[dict] = field(default_factory=OrderedDict)
     with_protected_recipients: bool = False
     with_flatten_recipients: bool = True
 
@@ -185,7 +188,7 @@ class JweEnvelope:
             raise ValueError("Invalid JWE: not JSON")
 
     @classmethod
-    def deserialize(cls, message: Mapping[str, Any]) -> "JweEnvelope":
+    def deserialize(cls, message: Mapping[str, Any]) -> "JweEnvelope":  # noqa: C901
         """Deserialize a JWE envelope from a mapping."""
         # Basic validation
 
@@ -248,7 +251,7 @@ class JweEnvelope:
         return cls._deserialize(message)
 
     @classmethod
-    def _deserialize(cls, parsed: Mapping[str, Any]) -> "JweEnvelope":
+    def _deserialize(cls, parsed: Mapping[str, Any]) -> "JweEnvelope":  # noqa: C901
         protected_b64 = parsed[IDENT_PROTECTED]
         try:
             protected: dict = json.loads(from_b64url(protected_b64))
@@ -281,7 +284,7 @@ class JweEnvelope:
             encrypted_key = parsed[IDENT_ENC_KEY]
             header = parsed.get(IDENT_HEADER)
         else:
-            raise ValueError("Invalid JWE: missing encrypted key")
+            header = None
 
         if recipients:
             if encrypted_key:
@@ -303,22 +306,27 @@ class JweEnvelope:
             if recip.header and recip.header.keys() & all_h:
                 raise ValueError("Invalid JWE: duplicate header")
 
+        ciphertext = from_b64url(parsed["ciphertext"])
+        iv = from_b64url(parsed["iv"])
+        tag = from_b64url(parsed["tag"])
+        aad = from_b64url(parsed["aad"]) if "aad" in parsed else None
+
         inst = cls(
             recipients=recipients,
             protected=protected,
             protected_b64=protected_b64,
             unprotected=unprotected,
-            ciphertext=parsed["ciphertext"],
-            iv=parsed["iv"],
-            tag=parsed["tag"],
-            aad=parsed.get("aad"),
+            ciphertext=ciphertext,
+            iv=iv,
+            tag=tag,
+            aad=aad,
             with_protected_recipients=protected_recipients,
             with_flatten_recipients=flat_recipients,
         )
 
         return inst
 
-    def serialize(self) -> dict:
+    def serialize(self) -> dict:  # noqa: C901
         """Serialize the JWE envelope to a mapping."""
         if self.protected_b64 is None:
             raise ValueError("Missing protected: use set_protected")
@@ -329,7 +337,7 @@ class JweEnvelope:
         if self.tag is None:
             raise ValueError("Missing tag for JWE")
         env = OrderedDict()
-        env["protected"] = self.protected_b64
+        env["protected"] = self.protected_b64.decode("utf-8")
         if self.unprotected:
             env["unprotected"] = self.unprotected.copy()
         if not self.with_protected_recipients:

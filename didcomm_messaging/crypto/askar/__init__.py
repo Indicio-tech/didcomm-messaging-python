@@ -1,7 +1,7 @@
 """Askar backend for DIDComm Messaging."""
 from collections import OrderedDict
 import json
-from typing import Mapping, Optional, Sequence, Union
+from typing import Optional, Sequence, Union
 
 from pydid import VerificationMethod
 from didcomm_messaging.crypto import SecretsManager
@@ -406,8 +406,8 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
                 recip.encrypted_key,
                 cc_tag=wrapper.tag,
             )
-        except AskarError:
-            raise CryptoServiceError("Error decrypting content encryption key")
+        except AskarError as err:
+            raise CryptoServiceError("Error decrypting content encryption key") from err
 
         try:
             plaintext = cek.aead_decrypt(

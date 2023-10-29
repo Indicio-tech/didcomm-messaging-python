@@ -5,7 +5,7 @@
 groups = ["default", "askar", "dev", "did_peer"]
 strategy = ["cross_platform"]
 lock_version = "4.4"
-content_hash = "sha256:117b703372de1000f550fc2e84ae83bc785012b0b095480d14943c549bed0ca9"
+content_hash = "sha256:5824490f0dd97d7a39b6eff1bfc1c4574c978fad5c63f5287f5cbd67ad4446e4"
 
 [[package]]
 name = "aries-askar"
@@ -334,6 +334,19 @@ dependencies = [
 files = [
     {file = "pytest-7.4.3-py3-none-any.whl", hash = "sha256:0d009c083ea859a71b76adf7c1d502e4bc170b80a8ef002da5806527b9591fac"},
     {file = "pytest-7.4.3.tar.gz", hash = "sha256:d989d136982de4e3b29dabcc838ad581c64e8ed52c11fbe86ddebd9da0818cd5"},
+]
+
+[[package]]
+name = "pytest-asyncio"
+version = "0.21.1"
+requires_python = ">=3.7"
+summary = "Pytest support for asyncio"
+dependencies = [
+    "pytest>=7.0.0",
+]
+files = [
+    {file = "pytest-asyncio-0.21.1.tar.gz", hash = "sha256:40a7eae6dded22c7b604986855ea48400ab15b069ae38116e8c01238e9eeb64d"},
+    {file = "pytest_asyncio-0.21.1-py3-none-any.whl", hash = "sha256:8666c1c8ac02631d7c51ba282e0c69a8a452b211ffedf2599099845da5c5c37b"},
 ]
 
 [[package]]
