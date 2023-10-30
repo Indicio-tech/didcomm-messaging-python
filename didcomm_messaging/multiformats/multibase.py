@@ -41,17 +41,20 @@ class Base58BtcEncoder(MultibaseEncoder):
 
 class Base64UrlEncoder(MultibaseEncoder):
     """Base64URL encoding."""
+
     name = "base64url"
     character = "u"
 
     def encode(self, value: bytes) -> str:
         """Encode a byte string using the base64url encoding."""
         import base64
+
         return base64.urlsafe_b64encode(value).decode().rstrip("=")
 
     def decode(self, value: str) -> bytes:
         """Decode a base64url encoded string."""
         import base64
+
         return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
 
 
