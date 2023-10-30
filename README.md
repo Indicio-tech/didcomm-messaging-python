@@ -4,7 +4,7 @@ This is a minimal but flexible implementation of [DIDComm Messaging](https://ide
 
 ## Usage
 
-https://github.com/dbluhm/didcomm-messaging-python/blob/648a69e2a2dedf8e30343e7a7db3db955598645c/example.py#L1-L51
+https://github.com/Indicio-tech/didcomm-messaging-python/blob/53a9a33e9bc503f13020dd9744d0a2763955af12/example.py#L1-L51
 
 ## Overview
 
