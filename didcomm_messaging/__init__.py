@@ -1,1 +1,84 @@
-"""DIDComm Messaging implementation using Aries Askar."""
+"""DIDComm Messaging."""
+from dataclasses import dataclass
+import json
+from typing import Optional
+
+from pydid.service import DIDCommV2Service
+
+from didcomm_messaging.crypto import CryptoService, SecretsManager
+from didcomm_messaging.packaging import PackagingService
+from didcomm_messaging.resolver import DIDResolver
+from didcomm_messaging.routing import RoutingService
+
+
+@dataclass
+class PackResult:
+    """Result of packing a message."""
+
+    message: bytes
+    target: str
+
+
+@dataclass
+class UnpackResult:
+    """Result of unpacking a message."""
+
+    message: dict
+    encrytped: bool
+    authenticated: bool
+    recipient_kid: str
+    sender_kid: Optional[str] = None
+
+
+class DIDCommMessaging:
+    """Main entrypoint for DIDComm Messaging."""
+
+    def __init__(
+        self,
+        crypto: CryptoService,
+        secrets: SecretsManager,
+        resolver: DIDResolver,
+        packaging: PackagingService,
+        routing: RoutingService,
+    ):
+        """Initialize the DIDComm Messaging service."""
+        self.crypto = crypto
+        self.secrets = secrets
+        self.resolver = resolver
+        self.packaging = packaging
+        self.routing = routing
+
+    def service_to_target(self, service: DIDCommV2Service) -> str:
+        """Convert a service to a target uri.
+
+        This is a very simple implementation that just returns the first one.
+        """
+        if isinstance(service.service_endpoint, list):
+            service_endpoint = service.service_endpoint[0]
+        else:
+            service_endpoint = service.service_endpoint
+
+        return service_endpoint.uri
+
+    async def pack(self, message: dict, to: str, frm: Optional[str] = None, **options):
+        """Pack a message."""
+        # TODO crypto layer permits packing to multiple recipients; should we as well?
+
+        encoded_message = await self.packaging.pack(
+            json.dumps(message).encode(), [to], frm, **options
+        )
+
+        forward, service = await self.routing.prepare_forward(to, encoded_message)
+        return PackResult(forward, self.service_to_target(service))
+
+    async def unpack(self, encoded_message: bytes, **options) -> UnpackResult:
+        """Unpack a message."""
+        unpacked, metadata = await self.packaging.unpack(encoded_message, **options)
+        message = json.loads(unpacked.decode())
+        return UnpackResult(
+            message,
+            encrytped=bool(metadata.method),
+            authenticated=bool(metadata.sender_kid),
+            recipient_kid=metadata.recip_key.kid,
+            sender_kid=metadata.sender_kid,
+        )

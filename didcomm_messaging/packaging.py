@@ -2,7 +2,7 @@
 
 
 from dataclasses import dataclass
-from typing import Generic, Literal, Optional, Sequence, Union
+from typing import Generic, Literal, Optional, Sequence, Tuple, Union
 
 from pydid import DIDUrl, VerificationMethod
 from didcomm_messaging.crypto import P, S, CryptoService, SecretsManager
@@ -84,12 +84,17 @@ class PackagingService(Generic[P, S]):
 
         return PackedMessageMetadata(wrapper, method, recip_key, sender_kid)
 
-    async def unpack(self, enc_message: Union[str, bytes]) -> bytes:
+    async def unpack(
+        self, enc_message: Union[str, bytes]
+    ) -> Tuple[bytes, PackedMessageMetadata]:
         """Unpack a DIDComm message."""
         metadata = await self.extract_packed_message_metadata(enc_message)
 
         if metadata.method == "ECDH-ES":
-            return await self.crypto.ecdh_es_decrypt(enc_message, metadata.recip_key)
+            return (
+                await self.crypto.ecdh_es_decrypt(enc_message, metadata.recip_key),
+                metadata,
+            )
 
         if not metadata.sender_kid:
             raise PackagingServiceError("Missing sender key ID")
@@ -99,8 +104,11 @@ class PackagingService(Generic[P, S]):
         )
         sender_key = self.crypto.verification_method_to_public_key(sender_vm)
 
-        return await self.crypto.ecdh_1pu_decrypt(
-            enc_message, metadata.recip_key, sender_key
+        return (
+            await self.crypto.ecdh_1pu_decrypt(
+                enc_message, metadata.recip_key, sender_key
+            ),
+            metadata,
         )
 
     async def recip_for_kid_or_default_for_did(self, kid_or_did: str) -> P:
