@@ -6,7 +6,7 @@ from typing import Generic, Optional, Sequence, TypeVar, Union
 
 from pydid import VerificationMethod
 
-from didcomm_messaging.jwe import JweEnvelope
+from .jwe import JweEnvelope
 
 
 class CryptoServiceError(Exception):

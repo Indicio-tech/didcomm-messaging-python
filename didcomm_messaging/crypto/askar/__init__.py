@@ -5,7 +5,7 @@ from typing import Optional, Sequence, Union
 
 from pydid import VerificationMethod
 from didcomm_messaging.crypto import SecretsManager
-from didcomm_messaging.jwe import (
+from ..jwe import (
     JweBuilder,
     JweEnvelope,
     JweRecipient,

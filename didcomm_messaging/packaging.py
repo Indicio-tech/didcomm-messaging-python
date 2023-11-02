@@ -6,7 +6,7 @@ from typing import Generic, Literal, Optional, Sequence, Union
 
 from pydid import DIDUrl, VerificationMethod
 from didcomm_messaging.crypto import P, S, CryptoService, SecretsManager
-from didcomm_messaging.jwe import JweEnvelope, from_b64url
+from didcomm_messaging.crypto.jwe import JweEnvelope, from_b64url
 from didcomm_messaging.resolver import DIDResolver
 
 
