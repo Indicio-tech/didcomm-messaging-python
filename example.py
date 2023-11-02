@@ -3,7 +3,7 @@
 from aries_askar import Key, KeyAlg
 from didcomm_messaging.crypto.askar import AskarCryptoService, AskarSecretKey
 from didcomm_messaging.crypto.basic import InMemorySecretsManager
-from didcomm_messaging.didcomm import PackagingService
+from didcomm_messaging.packaging import PackagingService
 from didcomm_messaging.multiformats import multibase
 from didcomm_messaging.multiformats import multicodec
 from didcomm_messaging.resolver.peer import Peer2, Peer4
