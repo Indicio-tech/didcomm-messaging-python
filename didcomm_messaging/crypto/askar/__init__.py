@@ -2,6 +2,7 @@
 from collections import OrderedDict
 import json
 from typing import Optional, Sequence, Union
+import hashlib
 
 from pydid import VerificationMethod
 from didcomm_messaging.crypto import SecretsManager
@@ -323,7 +324,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
                 agree_alg = recip_key.key.algorithm
             apv.append(recip_key.kid)
         apv.sort()
-        apv = b64url(".".join(apv))
+        apv = b64url(hashlib.sha256((".".join(apv)).encode()).digest())
 
         builder.set_protected(
             OrderedDict(
