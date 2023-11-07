@@ -190,9 +190,12 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
             enc_key = ecdh.EcdhEs(alg_id, None, None).sender_wrap_key(  # type: ignore
                 wrap_alg, epk, recip_key.key, cek
             )
+            # RFC 3394 key wrapping requires default initial value made up of 8
+            # bytes of 0xa6 repeated 8 times
+            aes_wrapped = (b"\xa6" * 8) + enc_key.ciphertext
             builder.add_recipient(
                 JweRecipient(
-                    encrypted_key=enc_key.ciphertext,
+                    encrypted_key=aes_wrapped,
                     header={"kid": recip_key.kid, "epk": epk.get_jwk_public()},
                 )
             )
@@ -213,7 +216,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
 
         return builder.build().to_json().encode("utf-8")
 
-    async def ecdh_es_decrypt(
+    async def ecdh_es_decrypt(  # noqa: C901
         self,
         wrapper: Union[JweEnvelope, str, bytes],
         recip_key: AskarSecretKey,
@@ -262,13 +265,21 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         apv = recip.header.get("apv")
         # apu and apv are allowed to be None
 
+        # RFC 3394 key wrapping requires default initial value made up of 8
+        # bytes of 0xa6 repeated 8 times
+        div = b"\xa6" * 8
+        if not recip.encrypted_key.startswith(div):
+            raise CryptoServiceError("Invalid wrapped key")
+
+        aes_unwrapped = recip.encrypted_key[len(div) :]
+
         try:
             cek = ecdh.EcdhEs(alg_id, apu, apv).receiver_unwrap_key(  # type: ignore
                 wrap_alg,
                 enc_alg,
                 epk,
                 recip_key.key,
-                recip.encrypted_key,
+                aes_unwrapped,
             )
         except AskarError:
             raise CryptoServiceError("Error decrypting content encryption key")
@@ -347,15 +358,16 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
             enc_key = ecdh.Ecdh1PU(alg_id, apu, apv).sender_wrap_key(
                 wrap_alg, epk, sender_key.key, recip_key.key, cek, cc_tag=payload.tag
             )
+            # RFC 3394 key wrapping requires default initial value made up of 8
+            # bytes of 0xa6 repeated 8 times
+            aes_wrapped = (b"\xa6" * 8) + enc_key.ciphertext
             builder.add_recipient(
-                JweRecipient(
-                    encrypted_key=enc_key.ciphertext, header={"kid": recip_key.kid}
-                )
+                JweRecipient(encrypted_key=aes_wrapped, header={"kid": recip_key.kid})
             )
 
         return builder.build().to_json().encode("utf-8")
 
-    async def ecdh_1pu_decrypt(
+    async def ecdh_1pu_decrypt(  # noqa: C901
         self,
         wrapper: Union[JweEnvelope, str, bytes],
         recip_key: AskarSecretKey,
@@ -396,6 +408,14 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         apv = wrapper.protected.get("apv")
         # apu and apv are allowed to be None
 
+        # RFC 3394 key wrapping requires default initial value made up of 8
+        # bytes of 0xa6 repeated 8 times
+        div = b"\xa6" * 8
+        if not recip.encrypted_key.startswith(div):
+            raise CryptoServiceError("Invalid wrapped key")
+
+        aes_unwrapped = recip.encrypted_key[len(div) :]
+
         try:
             cek = ecdh.Ecdh1PU(alg_id, apu, apv).receiver_unwrap_key(  # type: ignore
                 wrap_alg,
@@ -403,7 +423,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
                 epk,
                 sender_key.key,
                 recip_key.key,
-                recip.encrypted_key,
+                aes_unwrapped,
                 cc_tag=wrapper.tag,
             )
         except AskarError as err:
