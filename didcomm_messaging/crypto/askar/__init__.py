@@ -102,7 +102,7 @@ class AskarKey(PublicKey):
                     raise ValueError("Invalid key") from err
                 return key
             else:
-                key = cls._multikey_to_key(public_key_multibase)
+                key = cls.multikey_to_key(public_key_multibase)
                 if key.algorithm != alg:
                     raise ValueError("Type and algorithm mismatch")
                 return key
@@ -126,7 +126,7 @@ class AskarKey(PublicKey):
             if not multikey:
                 raise ValueError("Multikey verification method missing key")
 
-            key = cls._multikey_to_key(multikey)
+            key = cls.multikey_to_key(multikey)
             return cls(key, kid)
 
         alg = cls.type_to_alg.get(vm.type)
