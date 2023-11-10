@@ -48,18 +48,22 @@ class AskarKey(PublicKey):
         """Initialize a new AskarKey instance."""
         self.key = key
         self._kid = kid
+        self._multikey = self.key_to_multikey(key)
 
-        codec = self.alg_to_codec.get(self.key.algorithm)
+    @classmethod
+    def key_to_multikey(cls, key: Key) -> str:
+        """Get a multikey from an Askar Key instance."""
+        codec = cls.alg_to_codec.get(key.algorithm)
         if not codec:
             raise ValueError("Unsupported key type")
 
-        self._multikey = multibase.encode(
-            multicodec.wrap(multicodec.multicodec(codec), self.key.get_public_bytes()),
+        return multibase.encode(
+            multicodec.wrap(multicodec.multicodec(codec), key.get_public_bytes()),
             "base58btc",
         )
 
     @classmethod
-    def _multikey_to_key(cls, multikey: str) -> Key:
+    def multikey_to_key(cls, multikey: str) -> Key:
         """Convert a multibase-encoded key to an Askar Key instance."""
         decoded = multibase.decode(multikey)
         codec, key = multicodec.unwrap(decoded)
