@@ -3,7 +3,7 @@
 from authlib.jose import OKPKey
 import pytest
 
-from didcomm_messaging.crypto.authlib import (
+from didcomm_messaging.crypto.backend.authlib import (
     AuthlibCryptoService,
     AuthlibKey,
     AuthlibSecretKey,

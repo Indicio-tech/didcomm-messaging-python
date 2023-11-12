@@ -6,7 +6,7 @@ from typing import Mapping, Optional, Sequence, Tuple, Union
 from pydid import VerificationMethod
 from didcomm_messaging.multiformats import multibase, multicodec
 from didcomm_messaging.multiformats.multibase import Base64UrlEncoder
-from . import CryptoService, PublicKey, SecretKey
+from didcomm_messaging.crypto.base import CryptoService, PublicKey, SecretKey
 
 
 try:
@@ -18,7 +18,7 @@ try:
 except ImportError:
     raise ImportError("Authlib backend requires the 'authlib' extra to be installed")
 
-base64 = Base64UrlEncoder()
+b64url = Base64UrlEncoder()
 
 
 class AuthlibKey(PublicKey):
@@ -58,7 +58,7 @@ class AuthlibKey(PublicKey):
         if not codec:
             raise ValueError("Unsupported key type")
 
-        key_bytes = base64.decode(jwk["x"])
+        key_bytes = b64url.decode(jwk["x"])
         return multibase.encode(
             multicodec.wrap(multicodec.multicodec(codec), key_bytes), "base58btc"
         )
@@ -73,7 +73,7 @@ class AuthlibKey(PublicKey):
         except KeyError:
             raise ValueError(f"Unsupported key type: {codec.name}")
 
-        jwk = {"kty": kty, "crv": crv, "x": base64.encode(key)}
+        jwk = {"kty": kty, "crv": crv, "x": b64url.encode(key)}
 
         try:
             return JsonWebKey.import_key(jwk)
@@ -107,7 +107,7 @@ class AuthlibKey(PublicKey):
             raise ValueError("Unsupported verification method type")
 
         key_bytes = cls.key_bytes_from_verification_method(vm)
-        jwk = {"kty": kty, "crv": crv, "x": base64.encode(key_bytes)}
+        jwk = {"kty": kty, "crv": crv, "x": b64url.encode(key_bytes)}
 
         key = JsonWebKey.import_key(jwk)
         return cls(key, kid)
@@ -141,8 +141,8 @@ class AuthlibCryptoService(CryptoService[AuthlibKey, AuthlibSecretKey]):
         skid = frm.kid
         kids = [to_key.kid for to_key in to]
 
-        apu = base64.encode(skid.encode())
-        apv = base64.encode(hashlib.sha256((".".join(sorted(kids))).encode()).digest())
+        apu = b64url.encode(skid.encode())
+        apv = b64url.encode(hashlib.sha256((".".join(sorted(kids))).encode()).digest())
         protected = {
             "typ": "application/didcomm-encrypted+json",
             "alg": alg,

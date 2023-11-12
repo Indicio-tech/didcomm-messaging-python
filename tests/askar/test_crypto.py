@@ -1,7 +1,11 @@
 from aries_askar import Key, KeyAlg
 import pytest
 
-from didcomm_messaging.crypto.askar import AskarCryptoService, AskarKey, AskarSecretKey
+from didcomm_messaging.crypto.backend.askar import (
+    AskarCryptoService,
+    AskarKey,
+    AskarSecretKey,
+)
 
 
 ALICE_KID = "did:example:alice#key-1"

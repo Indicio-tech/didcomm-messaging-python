@@ -1,24 +1,21 @@
 """Askar backend for DIDComm Messaging."""
 from collections import OrderedDict
+import hashlib
 import json
 from typing import Optional, Sequence, Union
-import hashlib
 
 from pydid import VerificationMethod
-from didcomm_messaging.crypto import SecretsManager
-from ..jwe import (
-    JweBuilder,
-    JweEnvelope,
-    JweRecipient,
-    b64url,
-)
-from didcomm_messaging.crypto import (
+
+from didcomm_messaging.crypto.base import (
     CryptoService,
     CryptoServiceError,
     PublicKey,
     SecretKey,
+    SecretsManager,
 )
 from didcomm_messaging.multiformats import multibase, multicodec
+
+from ..jwe import JweBuilder, JweEnvelope, JweRecipient, b64url
 
 try:
     from aries_askar import Key, ecdh, AskarError, KeyAlg, Store

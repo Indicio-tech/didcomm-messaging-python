@@ -1,8 +1,8 @@
 """Example of using DIDComm Messaging."""
 
 from aries_askar import Key, KeyAlg
-from didcomm_messaging.crypto.askar import AskarCryptoService, AskarSecretKey
-from didcomm_messaging.crypto.basic import InMemorySecretsManager
+from didcomm_messaging.crypto.backend.askar import AskarCryptoService, AskarSecretKey
+from didcomm_messaging.crypto.backend.basic import InMemorySecretsManager
 from didcomm_messaging.packaging import PackagingService
 from didcomm_messaging.multiformats import multibase
 from didcomm_messaging.multiformats import multicodec
