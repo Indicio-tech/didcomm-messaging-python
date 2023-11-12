@@ -1,6 +1,7 @@
 """Authlib implementation of DIDComm crypto."""
 
 import hashlib
+import json
 from typing import Mapping, Optional, Sequence, Tuple, Union
 
 from pydid import VerificationMethod
@@ -180,7 +181,7 @@ class AuthlibCryptoService(CryptoService[AuthlibKey, AuthlibSecretKey]):
         res = jwe.serialize_json(
             header, message, [value.key for value in to_keys], sender_key=sender_key.key
         )
-        return res
+        return json.dumps(res).encode()
 
     async def ecdh_1pu_decrypt(
         self,
