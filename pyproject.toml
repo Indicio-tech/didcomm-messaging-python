@@ -21,6 +21,10 @@ did_peer = [
     "did-peer-2>=0.1.2",
     "did-peer-4>=0.1.2",
 ]
+authlib = [
+    "authlib>=1.2.1",
+]
+
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"

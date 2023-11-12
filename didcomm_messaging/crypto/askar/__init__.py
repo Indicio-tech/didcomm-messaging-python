@@ -76,44 +76,6 @@ class AskarKey(PublicKey):
             raise ValueError("Invalid key") from err
 
     @classmethod
-    def _expected_alg_and_material_to_key(
-        cls,
-        alg: KeyAlg,
-        public_key_multibase: Optional[str] = None,
-        public_key_base58: Optional[str] = None,
-    ) -> Key:
-        """Convert an Ed25519 key to an Askar Key instance."""
-        if public_key_multibase and public_key_base58:
-            raise ValueError(
-                "Only one of public_key_multibase or public_key_base58 must be given"
-            )
-        if not public_key_multibase and not public_key_base58:
-            raise ValueError(
-                "One of public_key_multibase or public_key_base58 must be given)"
-            )
-
-        if public_key_multibase:
-            decoded = multibase.decode(public_key_multibase)
-            if len(decoded) == 32:
-                # No multicodec prefix
-                try:
-                    key = Key.from_public_bytes(alg, decoded)
-                except AskarError as err:
-                    raise ValueError("Invalid key") from err
-                return key
-            else:
-                key = cls.multikey_to_key(public_key_multibase)
-                if key.algorithm != alg:
-                    raise ValueError("Type and algorithm mismatch")
-                return key
-
-        if public_key_base58:
-            decoded = multibase.decode("z" + public_key_base58)
-            return Key.from_public_bytes(alg, decoded)
-
-        raise ValueError("Failed to parse key")
-
-    @classmethod
     def from_verification_method(cls, vm: VerificationMethod) -> "AskarKey":
         """Create a Key instance from a DID Document Verification Method."""
         if not vm.id.did:
@@ -133,11 +95,8 @@ class AskarKey(PublicKey):
         if not alg:
             raise ValueError("Unsupported verification method type: {vm_type}")
 
-        base58 = vm.public_key_base58
-        multi = vm.public_key_multibase
-        key = cls._expected_alg_and_material_to_key(
-            alg, public_key_base58=base58, public_key_multibase=multi
-        )
+        key_bytes = cls.key_bytes_from_verification_method(vm)
+        key = Key.from_public_bytes(alg, key_bytes)
         return cls(key, kid)
 
     @property
@@ -220,14 +179,13 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
 
     async def ecdh_es_decrypt(
         self,
-        wrapper: Union[JweEnvelope, str, bytes],
+        enc_message: Union[str, bytes],
         recip_key: AskarSecretKey,
     ) -> bytes:
         """Decode a message from DIDComm v2 anonymous encryption."""
-        if isinstance(wrapper, bytes):
-            wrapper = wrapper.decode("utf-8")
-        if not isinstance(wrapper, JweEnvelope):
-            wrapper = JweEnvelope.from_json(wrapper)
+        if isinstance(enc_message, bytes):
+            wrapper = enc_message.decode("utf-8")
+        wrapper = JweEnvelope.from_json(enc_message)
 
         alg_id = wrapper.protected.get("alg")
 
@@ -362,15 +320,14 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
 
     async def ecdh_1pu_decrypt(
         self,
-        wrapper: Union[JweEnvelope, str, bytes],
+        enc_message: Union[str, bytes],
         recip_key: AskarSecretKey,
         sender_key: AskarKey,
     ):
         """Decode a message from DIDComm v2 authenticated encryption."""
-        if isinstance(wrapper, bytes):
-            wrapper = wrapper.decode("utf-8")
-        if not isinstance(wrapper, JweEnvelope):
-            wrapper = JweEnvelope.from_json(wrapper)
+        if isinstance(enc_message, bytes):
+            wrapper = enc_message.decode("utf-8")
+        wrapper = JweEnvelope.from_json(enc_message)
 
         alg_id = wrapper.protected.get("alg")
         if alg_id and alg_id in ("ECDH-1PU+A128KW", "ECDH-1PU+A256KW"):
