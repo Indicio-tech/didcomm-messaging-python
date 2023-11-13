@@ -9,16 +9,17 @@ content_hash = "sha256:457084dc08847eebe96ff14040e06a7e7674753c45fa2d27578a6d4d9
 
 [[package]]
 name = "aries-askar"
-version = "0.2.9"
+version = "0.3.0"
 requires_python = ">=3.6.3"
 summary = "UNKNOWN"
 dependencies = [
     "cached-property~=1.5",
 ]
 files = [
-    {file = "aries_askar-0.2.9-py3-none-macosx_10_9_universal2.whl", hash = "sha256:e8231845ab5eee3be08070c3d005a1be22da2c3fdf84b6adc06e97ee47abcd26"},
-    {file = "aries_askar-0.2.9-py3-none-manylinux2014_aarch64.whl", hash = "sha256:73a4b9384b762423da563ebbe72abc8edf4c11416150148b7b758afd98ef7758"},
-    {file = "aries_askar-0.2.9-py3-none-manylinux2014_x86_64.whl", hash = "sha256:9084f10f193a331275c6af72235ecc816063dafe71dc3eca5c920bf30ff069d1"},
+    {file = "aries_askar-0.3.0-py3-none-macosx_10_9_universal2.whl", hash = "sha256:924a17b027406992ecf37ec7f4a683364b285f48b24ba5a8ed2adb0a26d8454d"},
+    {file = "aries_askar-0.3.0-py3-none-manylinux2014_aarch64.whl", hash = "sha256:6665140131c491cc4cb751b144b758b3d90ce18919f2d94c666ef5ae23da7cc8"},
+    {file = "aries_askar-0.3.0-py3-none-manylinux2014_x86_64.whl", hash = "sha256:c59def3dce660c5a9aba90ac341e9c39b4f523ffa7345cf6131c9dd1c8e947d4"},
+    {file = "aries_askar-0.3.0-py3-none-win_amd64.whl", hash = "sha256:3a921ec32105390cec75f2c3d2b05ffe38eeecf81f86de7ead086b0ba8d93a6c"},
 ]
 
 [[package]]
