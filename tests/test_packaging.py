@@ -36,7 +36,6 @@ def packaging(secrets, crypto):
 @pytest.mark.asyncio
 async def test_packer_basic(
     secrets: InMemorySecretsManager,
-    crypto: AskarCryptoService,
     packaging: PackagingService,
 ):
     """Test basic packaging.
@@ -65,5 +64,5 @@ async def test_packer_basic(
     await secrets.add_secret(AskarSecretKey(xkey, f"{did}#key-2"))
     message = b"hello world"
     packed = await packaging.pack(message, [did], did)
-    unpacked = await packaging.unpack(packed)
+    unpacked, meta = await packaging.unpack(packed)
     assert unpacked == message
