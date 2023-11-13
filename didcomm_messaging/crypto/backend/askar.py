@@ -1,23 +1,19 @@
 """Askar backend for DIDComm Messaging."""
 from collections import OrderedDict
+import hashlib
 import json
 from typing import Optional, Sequence, Union
-import hashlib
 
 from pydid import VerificationMethod
-from didcomm_messaging.crypto import SecretsManager
-from ..jwe import (
-    JweBuilder,
-    JweEnvelope,
-    JweRecipient,
-    b64url,
-)
-from didcomm_messaging.crypto import (
+
+from didcomm_messaging.crypto.base import (
     CryptoService,
     CryptoServiceError,
     PublicKey,
     SecretKey,
+    SecretsManager,
 )
+from didcomm_messaging.crypto.jwe import JweBuilder, JweEnvelope, JweRecipient, b64url
 from didcomm_messaging.multiformats import multibase, multicodec
 
 try:
@@ -76,44 +72,6 @@ class AskarKey(PublicKey):
             raise ValueError("Invalid key") from err
 
     @classmethod
-    def _expected_alg_and_material_to_key(
-        cls,
-        alg: KeyAlg,
-        public_key_multibase: Optional[str] = None,
-        public_key_base58: Optional[str] = None,
-    ) -> Key:
-        """Convert an Ed25519 key to an Askar Key instance."""
-        if public_key_multibase and public_key_base58:
-            raise ValueError(
-                "Only one of public_key_multibase or public_key_base58 must be given"
-            )
-        if not public_key_multibase and not public_key_base58:
-            raise ValueError(
-                "One of public_key_multibase or public_key_base58 must be given)"
-            )
-
-        if public_key_multibase:
-            decoded = multibase.decode(public_key_multibase)
-            if len(decoded) == 32:
-                # No multicodec prefix
-                try:
-                    key = Key.from_public_bytes(alg, decoded)
-                except AskarError as err:
-                    raise ValueError("Invalid key") from err
-                return key
-            else:
-                key = cls.multikey_to_key(public_key_multibase)
-                if key.algorithm != alg:
-                    raise ValueError("Type and algorithm mismatch")
-                return key
-
-        if public_key_base58:
-            decoded = multibase.decode("z" + public_key_base58)
-            return Key.from_public_bytes(alg, decoded)
-
-        raise ValueError("Failed to parse key")
-
-    @classmethod
     def from_verification_method(cls, vm: VerificationMethod) -> "AskarKey":
         """Create a Key instance from a DID Document Verification Method."""
         if not vm.id.did:
@@ -133,11 +91,8 @@ class AskarKey(PublicKey):
         if not alg:
             raise ValueError("Unsupported verification method type: {vm_type}")
 
-        base58 = vm.public_key_base58
-        multi = vm.public_key_multibase
-        key = cls._expected_alg_and_material_to_key(
-            alg, public_key_base58=base58, public_key_multibase=multi
-        )
+        key_bytes = cls.key_bytes_from_verification_method(vm)
+        key = Key.from_public_bytes(alg, key_bytes)
         return cls(key, kid)
 
     @property
@@ -187,26 +142,37 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         except AskarError:
             raise CryptoServiceError("Error creating content encryption key")
 
+        apv = []
+        for recip_key in to_keys:
+            apv.append(recip_key.kid)
+        apv.sort()
+        apv = hashlib.sha256((".".join(apv)).encode()).digest()
+
         for recip_key in to_keys:
             try:
                 epk = Key.generate(recip_key.key.algorithm, ephemeral=True)
             except AskarError:
                 raise CryptoServiceError("Error creating ephemeral key")
-            enc_key = ecdh.EcdhEs(alg_id, None, None).sender_wrap_key(  # type: ignore
+            enc_key = ecdh.EcdhEs(alg_id, None, apv).sender_wrap_key(  # type: ignore
                 wrap_alg, epk, recip_key.key, cek
             )
             builder.add_recipient(
                 JweRecipient(
                     encrypted_key=enc_key.ciphertext,
-                    header={"kid": recip_key.kid, "epk": epk.get_jwk_public()},
+                    header={
+                        "kid": recip_key.kid,
+                        "epk": json.loads(epk.get_jwk_public()),
+                    },
                 )
             )
 
         builder.set_protected(
             OrderedDict(
                 [
+                    ("typ", "application/didcomm-encrypted+json"),
                     ("alg", alg_id),
                     ("enc", enc_id),
+                    ("apv", b64url(apv)),
                 ]
             )
         )
@@ -220,14 +186,13 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
 
     async def ecdh_es_decrypt(
         self,
-        wrapper: Union[JweEnvelope, str, bytes],
+        enc_message: Union[str, bytes],
         recip_key: AskarSecretKey,
     ) -> bytes:
         """Decode a message from DIDComm v2 anonymous encryption."""
-        if isinstance(wrapper, bytes):
-            wrapper = wrapper.decode("utf-8")
-        if not isinstance(wrapper, JweEnvelope):
-            wrapper = JweEnvelope.from_json(wrapper)
+        if isinstance(enc_message, bytes):
+            wrapper = enc_message.decode("utf-8")
+        wrapper = JweEnvelope.from_json(enc_message)
 
         alg_id = wrapper.protected.get("alg")
 
@@ -263,12 +228,10 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         except AskarError:
             raise CryptoServiceError("Error loading ephemeral key")
 
-        apu = recip.header.get("apu")
-        apv = recip.header.get("apv")
-        # apu and apv are allowed to be None
-
         try:
-            cek = ecdh.EcdhEs(alg_id, apu, apv).receiver_unwrap_key(  # type: ignore
+            cek = ecdh.EcdhEs(
+                alg_id, None, wrapper.apv_bytes
+            ).receiver_unwrap_key(  # type: ignore
                 wrap_alg,
                 enc_alg,
                 epk,
@@ -318,7 +281,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         except AskarError:
             raise CryptoServiceError("Error creating ephemeral key")
 
-        apu = b64url(sender_key.kid)
+        apu = sender_key.kid
         apv = []
         for recip_key in to_keys:
             if agree_alg:
@@ -328,15 +291,15 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
                 agree_alg = recip_key.key.algorithm
             apv.append(recip_key.kid)
         apv.sort()
-        apv = b64url(hashlib.sha256((".".join(apv)).encode()).digest())
+        apv = hashlib.sha256((".".join(apv)).encode()).digest()
 
         builder.set_protected(
             OrderedDict(
                 [
                     ("alg", alg_id),
                     ("enc", enc_id),
-                    ("apu", apu),
-                    ("apv", apv),
+                    ("apu", b64url(apu)),
+                    ("apv", b64url(apv)),
                     ("epk", json.loads(epk.get_jwk_public())),
                     ("skid", sender_key.kid),
                 ]
@@ -362,15 +325,14 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
 
     async def ecdh_1pu_decrypt(
         self,
-        wrapper: Union[JweEnvelope, str, bytes],
+        enc_message: Union[str, bytes],
         recip_key: AskarSecretKey,
         sender_key: AskarKey,
     ):
         """Decode a message from DIDComm v2 authenticated encryption."""
-        if isinstance(wrapper, bytes):
-            wrapper = wrapper.decode("utf-8")
-        if not isinstance(wrapper, JweEnvelope):
-            wrapper = JweEnvelope.from_json(wrapper)
+        if isinstance(enc_message, bytes):
+            wrapper = enc_message.decode("utf-8")
+        wrapper = JweEnvelope.from_json(enc_message)
 
         alg_id = wrapper.protected.get("alg")
         if alg_id and alg_id in ("ECDH-1PU+A128KW", "ECDH-1PU+A256KW"):
@@ -397,12 +359,10 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         except AskarError:
             raise CryptoServiceError("Error loading ephemeral key")
 
-        apu = wrapper.protected.get("apu")
-        apv = wrapper.protected.get("apv")
-        # apu and apv are allowed to be None
-
         try:
-            cek = ecdh.Ecdh1PU(alg_id, apu, apv).receiver_unwrap_key(  # type: ignore
+            cek = ecdh.Ecdh1PU(
+                alg_id, wrapper.apu_bytes, wrapper.apv_bytes
+            ).receiver_unwrap_key(  # type: ignore
                 wrap_alg,
                 enc_alg,
                 epk,

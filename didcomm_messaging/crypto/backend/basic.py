@@ -1,7 +1,7 @@
 """Basic Crypto Implementations."""
 
 from typing import Optional
-from . import S, SecretsManager
+from didcomm_messaging.crypto.base import S, SecretsManager
 
 
 class InMemorySecretsManager(SecretsManager[S]):

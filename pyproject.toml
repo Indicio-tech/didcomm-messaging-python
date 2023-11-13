@@ -21,6 +21,11 @@ did_peer = [
     "did-peer-2>=0.1.2",
     "did-peer-4>=0.1.2",
 ]
+authlib = [
+    "authlib>=1.2.1",
+    "pycryptodomex>=3.19.0",
+]
+
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
@@ -29,7 +34,7 @@ build-backend = "pdm.backend"
 addopts = "--doctest-glob README.md --ruff"
 
 [tool.ruff]
-select = ["E", "F", "C", "D"]
+select = ["E", "F", "C", "D", "TID"]
 
 ignore = [
     # Google Python Doc Style
