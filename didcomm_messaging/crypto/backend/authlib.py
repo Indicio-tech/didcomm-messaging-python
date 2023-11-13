@@ -5,9 +5,15 @@ import json
 from typing import Mapping, Optional, Sequence, Tuple, Union
 
 from pydid import VerificationMethod
+
+from didcomm_messaging.crypto.base import (
+    CryptoService,
+    CryptoServiceError,
+    PublicKey,
+    SecretKey,
+)
 from didcomm_messaging.multiformats import multibase, multicodec
 from didcomm_messaging.multiformats.multibase import Base64UrlEncoder
-from didcomm_messaging.crypto.base import CryptoService, PublicKey, SecretKey
 
 
 try:
@@ -136,7 +142,7 @@ class AuthlibCryptoService(CryptoService[AuthlibKey, AuthlibSecretKey]):
         """Return a PublicKey from a verification method."""
         return AuthlibKey.from_verification_method(vm)
 
-    def _build_header(
+    def _build_header_ecdh_1pu(
         self, to: Sequence[AuthlibKey], frm: AuthlibSecretKey, alg: str, enc: str
     ):
         skid = frm.kid
@@ -155,17 +161,39 @@ class AuthlibCryptoService(CryptoService[AuthlibKey, AuthlibSecretKey]):
         recipients = [{"header": {"kid": kid}} for kid in kids]
         return {"protected": protected, "recipients": recipients}
 
+    def _build_header_ecdh_es(self, to: Sequence[AuthlibKey], alg: str, enc: str):
+        kids = [to_key.kid for to_key in to]
+
+        apv = b64url.encode(hashlib.sha256((".".join(sorted(kids))).encode()).digest())
+        protected = {
+            "typ": "application/didcomm-encrypted+json",
+            "alg": alg,
+            "enc": enc,
+            "apv": apv,
+        }
+        recipients = [{"header": {"kid": kid}} for kid in kids]
+        return {"protected": protected, "recipients": recipients}
+
     async def ecdh_es_encrypt(
         self, to_keys: Sequence[AuthlibKey], message: bytes
     ) -> bytes:
         """Encrypt a message using ECDH-ES."""
-        return await super().ecdh_es_encrypt(to_keys, message)
+        header = self._build_header_ecdh_es(to_keys, "ECDH-ES+A256KW", "XC20P")
+        jwe = JsonWebEncryption()
+        res = jwe.serialize_json(header, message, [value.key for value in to_keys])
+        return json.dumps(res).encode()
 
     async def ecdh_es_decrypt(
         self, enc_message: Union[str, bytes], recip_key: AuthlibSecretKey
     ) -> bytes:
         """Decrypt a message using ECDH-ES."""
-        return await super().ecdh_es_decrypt(enc_message, recip_key)
+        try:
+            jwe = JsonWebEncryption()
+            res = jwe.deserialize_json(enc_message, recip_key.key)
+        except Exception as err:
+            raise CryptoServiceError("Invalid JWE") from err
+
+        return res["payload"]
 
     async def ecdh_1pu_encrypt(
         self,
@@ -174,7 +202,7 @@ class AuthlibCryptoService(CryptoService[AuthlibKey, AuthlibSecretKey]):
         message: bytes,
     ) -> bytes:
         """Encrypt a message using ECDH-1PU."""
-        header = self._build_header(
+        header = self._build_header_ecdh_1pu(
             to_keys, sender_key, "ECDH-1PU+A256KW", "A256CBC-HS512"
         )
         jwe = JsonWebEncryption()
@@ -196,6 +224,6 @@ class AuthlibCryptoService(CryptoService[AuthlibKey, AuthlibSecretKey]):
                 enc_message, recip_key.key, sender_key=sender_key.key
             )
         except Exception as err:
-            raise ValueError("Invalid JWE") from err
+            raise CryptoServiceError("Invalid JWE") from err
 
         return res["payload"]

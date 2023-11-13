@@ -143,26 +143,37 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         except AskarError:
             raise CryptoServiceError("Error creating content encryption key")
 
+        apv = []
+        for recip_key in to_keys:
+            apv.append(recip_key.kid)
+        apv.sort()
+        apv = hashlib.sha256((".".join(apv)).encode()).digest()
+
         for recip_key in to_keys:
             try:
                 epk = Key.generate(recip_key.key.algorithm, ephemeral=True)
             except AskarError:
                 raise CryptoServiceError("Error creating ephemeral key")
-            enc_key = ecdh.EcdhEs(alg_id, None, None).sender_wrap_key(  # type: ignore
+            enc_key = ecdh.EcdhEs(alg_id, None, apv).sender_wrap_key(  # type: ignore
                 wrap_alg, epk, recip_key.key, cek
             )
             builder.add_recipient(
                 JweRecipient(
                     encrypted_key=enc_key.ciphertext,
-                    header={"kid": recip_key.kid, "epk": epk.get_jwk_public()},
+                    header={
+                        "kid": recip_key.kid,
+                        "epk": json.loads(epk.get_jwk_public()),
+                    },
                 )
             )
 
         builder.set_protected(
             OrderedDict(
                 [
+                    ("typ", "application/didcomm-encrypted+json"),
                     ("alg", alg_id),
                     ("enc", enc_id),
+                    ("apv", b64url(apv)),
                 ]
             )
         )
@@ -218,12 +229,10 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         except AskarError:
             raise CryptoServiceError("Error loading ephemeral key")
 
-        apu = recip.header.get("apu")
-        apv = recip.header.get("apv")
-        # apu and apv are allowed to be None
-
         try:
-            cek = ecdh.EcdhEs(alg_id, apu, apv).receiver_unwrap_key(  # type: ignore
+            cek = ecdh.EcdhEs(
+                alg_id, None, wrapper.apv_bytes
+            ).receiver_unwrap_key(  # type: ignore
                 wrap_alg,
                 enc_alg,
                 epk,
@@ -273,7 +282,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         except AskarError:
             raise CryptoServiceError("Error creating ephemeral key")
 
-        apu = b64url(sender_key.kid)
+        apu = sender_key.kid
         apv = []
         for recip_key in to_keys:
             if agree_alg:
@@ -283,15 +292,15 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
                 agree_alg = recip_key.key.algorithm
             apv.append(recip_key.kid)
         apv.sort()
-        apv = b64url(hashlib.sha256((".".join(apv)).encode()).digest())
+        apv = hashlib.sha256((".".join(apv)).encode()).digest()
 
         builder.set_protected(
             OrderedDict(
                 [
                     ("alg", alg_id),
                     ("enc", enc_id),
-                    ("apu", apu),
-                    ("apv", apv),
+                    ("apu", b64url(apu)),
+                    ("apv", b64url(apv)),
                     ("epk", json.loads(epk.get_jwk_public())),
                     ("skid", sender_key.kid),
                 ]
@@ -351,12 +360,10 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         except AskarError:
             raise CryptoServiceError("Error loading ephemeral key")
 
-        apu = wrapper.protected.get("apu")
-        apv = wrapper.protected.get("apv")
-        # apu and apv are allowed to be None
-
         try:
-            cek = ecdh.Ecdh1PU(alg_id, apu, apv).receiver_unwrap_key(  # type: ignore
+            cek = ecdh.Ecdh1PU(
+                alg_id, wrapper.apu_bytes, wrapper.apv_bytes
+            ).receiver_unwrap_key(  # type: ignore
                 wrap_alg,
                 enc_alg,
                 epk,

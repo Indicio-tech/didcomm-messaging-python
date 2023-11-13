@@ -63,7 +63,7 @@ def authlib():
 
 
 @pytest.mark.asyncio
-async def test_compat(
+async def test_compat_ecdh_1pu(
     askar: AskarCryptoService,
     authlib: AuthlibCryptoService,
     alice: tuple[AskarSecretKey, AuthlibKey],
@@ -77,11 +77,46 @@ async def test_compat(
     bob_sk, bob_pk = bob
 
     to_alice = b"Dear alice, please decrypt this"
-    enc_message = await authlib.ecdh_1pu_encrypt([alice_pk], bob_sk, to_alice)
-    plaintext = await askar.ecdh_1pu_decrypt(enc_message, alice_sk, bob_pk)
+    alice_enc_message = await authlib.ecdh_1pu_encrypt([alice_pk], bob_sk, to_alice)
+    print(alice_enc_message)
+
+    plaintext = await askar.ecdh_1pu_decrypt(alice_enc_message, alice_sk, bob_pk)
     assert plaintext == to_alice
 
     to_bob = b"Dear bob, please decrypt this"
-    enc_message = await askar.ecdh_1pu_encrypt([bob_pk], alice_sk, to_bob)
-    plaintext = await authlib.ecdh_1pu_decrypt(enc_message, bob_sk, alice_pk)
+    bob_enc_message = await askar.ecdh_1pu_encrypt([bob_pk], alice_sk, to_bob)
+
+    print(bob_enc_message)
+
+    plaintext = await authlib.ecdh_1pu_decrypt(bob_enc_message, bob_sk, alice_pk)
+    assert plaintext == to_bob
+
+
+@pytest.mark.asyncio
+async def test_compat_ecdh_es(
+    askar: AskarCryptoService,
+    authlib: AuthlibCryptoService,
+    alice: tuple[AskarSecretKey, AuthlibKey],
+    bob: tuple[AuthlibSecretKey, AskarKey],
+):
+    """Test compabibility between Askar and Authlib.
+
+    Alice uses Askar, Bob uses Authlib.
+    """
+    alice_sk, alice_pk = alice
+    bob_sk, bob_pk = bob
+
+    to_alice = b"Dear alice, please decrypt this"
+    alice_enc_message = await authlib.ecdh_es_encrypt([alice_pk], to_alice)
+    print(alice_enc_message)
+
+    plaintext = await askar.ecdh_es_decrypt(alice_enc_message, alice_sk)
+    assert plaintext == to_alice
+
+    to_bob = b"Dear bob, please decrypt this"
+    bob_enc_message = await askar.ecdh_es_encrypt([bob_pk], to_bob)
+
+    print(bob_enc_message)
+
+    plaintext = await authlib.ecdh_es_decrypt(bob_enc_message, bob_sk)
     assert plaintext == to_bob

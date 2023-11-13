@@ -35,3 +35,20 @@ async def test_1pu_round_trip(crypto: AskarCryptoService):
 
     plaintext = await crypto.ecdh_1pu_decrypt(enc_message, bob_priv_key, alice_key)
     assert plaintext == MESSAGE
+
+
+@pytest.mark.asyncio
+async def test_es_round_trip(crypto: AskarCryptoService):
+    """Test ECDH-ES round trip."""
+    alg = KeyAlg.X25519
+    alice_sk = Key.generate(alg)
+    alice_pk = Key.from_jwk(alice_sk.get_jwk_public())
+    bob_sk = Key.generate(alg)
+    bob_pk = Key.from_jwk(bob_sk.get_jwk_public())
+    bob_key = AskarKey(bob_sk, BOB_KID)
+    bob_priv_key = AskarSecretKey(bob_sk, BOB_KID)
+    alice_key = AskarKey(alice_sk, ALICE_KID)
+    alice_priv_key = AskarSecretKey(alice_sk, ALICE_KID)
+    enc_message = await crypto.ecdh_es_encrypt([bob_key], MESSAGE)
+    plaintext = await crypto.ecdh_es_decrypt(enc_message, bob_priv_key)
+    assert plaintext == MESSAGE

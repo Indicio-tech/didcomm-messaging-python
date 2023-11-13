@@ -367,7 +367,7 @@ class JweEnvelope:
         outer envelope.
         """
         header = self.protected.copy()
-        header.update(self.unprotected)
+        header.update(self.unprotected or {})
         for recip in self.recipients:
             if recip.header:
                 recip_h = header.copy()
@@ -393,7 +393,7 @@ class JweEnvelope:
         for recip in self.recipients:
             if recip.header and recip.header.get("kid") == kid:
                 header = self.protected.copy()
-                header.update(self.unprotected)
+                header.update(self.unprotected or {})
                 header.update(recip.header)
                 return JweRecipient(encrypted_key=recip.encrypted_key, header=header)
         raise ValueError(f"Unknown recipient: {kid}")
@@ -405,3 +405,17 @@ class JweEnvelope:
         if self.aad:
             aad += b"." + b64url(self.aad).encode("utf-8")
         return aad
+
+    @property
+    def apu_bytes(self) -> bytes:
+        """Accessor for the Agreement PartyUInfo."""
+        if "apu" in self.protected:
+            return from_b64url(self.protected["apu"])
+        raise ValueError("Missing apu")
+
+    @property
+    def apv_bytes(self) -> bytes:
+        """Accessor for the Agreement PartyVInfo."""
+        if "apv" in self.protected:
+            return from_b64url(self.protected["apv"])
+        raise ValueError("Missing apv")

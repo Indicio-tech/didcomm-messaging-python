@@ -23,6 +23,7 @@ did_peer = [
 ]
 authlib = [
     "authlib>=1.2.1",
+    "pycryptodomex>=3.19.0",
 ]
 
 [build-system]
