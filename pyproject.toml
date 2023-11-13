@@ -34,7 +34,7 @@ build-backend = "pdm.backend"
 addopts = "--doctest-glob README.md --ruff"
 
 [tool.ruff]
-select = ["E", "F", "C", "D"]
+select = ["E", "F", "C", "D", "TID"]
 
 ignore = [
     # Google Python Doc Style
