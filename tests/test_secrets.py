@@ -1,10 +1,10 @@
 import pytest
 from didcomm_messaging.crypto import SecretKey
 
-from didcomm_messaging.crypto.basic import InMemorySecretsManager
+from didcomm_messaging.crypto.backend.basic import InMemorySecretsManager
 
 
-class TestSecretKey(SecretKey):
+class MockSecretKey(SecretKey):
     def __init__(self, kid) -> None:
         self._kid = kid
 
@@ -21,14 +21,14 @@ def in_memory_secrets_manager():
 @pytest.fixture()
 def secret():
     kid = "did:example:alice#key-1"
-    key = TestSecretKey(kid=kid)
+    key = MockSecretKey(kid=kid)
     yield key
 
 
-@pytest.mark.asycnio
+@pytest.mark.asyncio
 async def test_in_memory_secrets(
-    in_memory_secrets_manager: InMemorySecretsManager, secret: TestSecretKey
+    in_memory_secrets_manager: InMemorySecretsManager, secret: MockSecretKey
 ):
     await in_memory_secrets_manager.add_secret(secret)
 
-    assert in_memory_secrets_manager.get_secret_by_kid(secret.kid) == secret
+    assert await in_memory_secrets_manager.get_secret_by_kid(secret.kid) == secret

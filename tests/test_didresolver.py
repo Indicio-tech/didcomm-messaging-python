@@ -17,6 +17,7 @@ def test_resolver():
     yield TestResolver()
 
 
+@pytest.mark.asyncio
 async def test_prefix_resolver(test_resolver: DIDResolver):
     did = "did:test:example_did"
 
