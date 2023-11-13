@@ -1,11 +1,11 @@
 """DIDComm Messaging."""
 from dataclasses import dataclass
 import json
-from typing import Optional
+from typing import Generic, Optional
 
 from pydid.service import DIDCommV2Service
 
-from didcomm_messaging.crypto import CryptoService, SecretsManager
+from didcomm_messaging.crypto import CryptoService, SecretsManager, P, S
 from didcomm_messaging.packaging import PackagingService
 from didcomm_messaging.resolver import DIDResolver
 from didcomm_messaging.routing import RoutingService
@@ -30,15 +30,15 @@ class UnpackResult:
     sender_kid: Optional[str] = None
 
 
-class DIDCommMessaging:
+class DIDCommMessaging(Generic[P, S]):
     """Main entrypoint for DIDComm Messaging."""
 
     def __init__(
         self,
-        crypto: CryptoService,
-        secrets: SecretsManager,
+        crypto: CryptoService[P, S],
+        secrets: SecretsManager[S],
         resolver: DIDResolver,
-        packaging: PackagingService,
+        packaging: PackagingService[P, S],
         routing: RoutingService,
     ):
         """Initialize the DIDComm Messaging service."""
