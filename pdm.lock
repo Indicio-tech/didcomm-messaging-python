@@ -3,8 +3,9 @@
 
 [metadata]
 groups = ["default", "askar", "dev", "did_peer"]
-strategy = ["cross_platform"]
-lock_version = "4.4"
+cross_platform = true
+static_urls = false
+lock_version = "4.3"
 content_hash = "sha256:5824490f0dd97d7a39b6eff1bfc1c4574c978fad5c63f5287f5cbd67ad4446e4"
 
 [[package]]
