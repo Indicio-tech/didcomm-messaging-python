@@ -55,7 +55,36 @@ class Base64UrlEncoder(MultibaseEncoder):
         """Decode a base64url encoded string."""
         import base64
 
-        return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+        # Ensure correct padding
+        padding_needed = 4 - (len(value) % 4)
+        if padding_needed != 4:
+            value += "=" * padding_needed
+
+        return base64.urlsafe_b64decode(value)
+
+
+class Base64Encoder(MultibaseEncoder):
+    """Base64URL encoding."""
+
+    name = "base64"
+    character = "m"
+
+    def encode(self, value: bytes) -> str:
+        """Encode a byte string using the base64 encoding."""
+        import base64
+
+        return base64.b64encode(value).decode().rstrip("=")
+
+    def decode(self, value: str) -> bytes:
+        """Decode a base64 encoded string."""
+        import base64
+
+        # Ensure correct padding
+        padding_needed = 4 - (len(value) % 4)
+        if padding_needed != 4:
+            value += "=" * padding_needed
+
+        return base64.b64decode(value)
 
 
 class Encoding(Enum):

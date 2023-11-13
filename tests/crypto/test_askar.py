@@ -2,7 +2,11 @@ from aries_askar import Key, KeyAlg
 from pydid import VerificationMethod
 import pytest
 
-from didcomm_messaging.crypto.askar import AskarCryptoService, AskarKey, AskarSecretKey
+from didcomm_messaging.crypto.backend.askar import (
+    AskarCryptoService,
+    AskarKey,
+    AskarSecretKey,
+)
 
 
 ALICE_KID = "did:example:alice#key-1"
@@ -37,7 +41,7 @@ async def test_1pu_round_trip(crypto: AskarCryptoService):
 
 @pytest.mark.asyncio
 async def test_es_round_trip(crypto: AskarCryptoService):
-    """Anoncrypt."""
+    """Test ECDH-ES (Anoncrypt) round trip."""
     alg = KeyAlg.X25519
     alice_sk = Key.generate(alg)
     alice_pk = Key.from_jwk(alice_sk.get_jwk_public())
