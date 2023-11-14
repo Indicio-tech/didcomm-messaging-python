@@ -2,11 +2,12 @@
 
 
 from dataclasses import dataclass
+import hashlib
 from typing import Generic, Literal, Optional, Sequence, Tuple, Union
 
 from pydid import DIDUrl, VerificationMethod
 from didcomm_messaging.crypto import P, S, CryptoService, SecretsManager
-from didcomm_messaging.crypto.jwe import JweEnvelope, from_b64url
+from didcomm_messaging.crypto.jwe import JweEnvelope, b64url, from_b64url
 from didcomm_messaging.resolver import DIDResolver
 
 
@@ -67,20 +68,31 @@ class PackagingService(Generic[P, S]):
         if not recip_key:
             raise PackagingServiceError("No recognized recipient key")
 
+        expected_apv = b64url(
+            hashlib.sha256((".".join(wrapper.recipient_key_ids)).encode()).digest()
+        )
+        apv = wrapper.protected.get("apv")
+        if not apv:
+            raise PackagingServiceError("Missing apv header")
+        if apv != expected_apv:
+            raise PackagingServiceError("Invalid apv value")
+
         if method == "ECDH-1PU":
             sender_kid_apu = None
             apu = wrapper.protected.get("apu")
-            if apu:
-                try:
-                    sender_kid_apu = from_b64url(apu).decode("utf-8")
-                except (UnicodeDecodeError, ValueError):
-                    raise PackagingServiceError("Invalid apu value")
+            if not apu:
+                raise PackagingServiceError("Missing apu header")
+
+            try:
+                sender_kid_apu = from_b64url(apu).decode("utf-8")
+            except (UnicodeDecodeError, ValueError):
+                raise PackagingServiceError("Invalid apu value")
+
             sender_kid = wrapper.protected.get("skid") or sender_kid_apu
-            if sender_kid_apu and sender_kid != sender_kid_apu:
+            if sender_kid != sender_kid_apu:
                 raise PackagingServiceError("Mismatch between skid and apu")
             if not sender_kid:
                 raise PackagingServiceError("Sender key ID not provided")
-            # FIXME - validate apv if present?
 
         return PackedMessageMetadata(wrapper, method, recip_key, sender_kid)
 
