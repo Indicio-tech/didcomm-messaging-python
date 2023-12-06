@@ -1,7 +1,7 @@
 """DIDComm Messaging."""
 from dataclasses import dataclass
 import json
-from typing import Generic, Optional
+from typing import Generic, Optional, List
 
 from pydid.service import DIDCommV2Service
 
@@ -16,7 +16,20 @@ class PackResult:
     """Result of packing a message."""
 
     message: bytes
-    target: str
+    target_services: List[DIDCommV2Service]
+
+    def get_endpoint(self, protocol: str) -> str:
+        return self.get_service(protocol).service_endpoint.uri
+
+    def get_service(self, protocol: str) -> DIDCommV2Service:
+        return self.filter_services_by_protocol(protocol)[0]
+
+    def filter_services_by_protocol(self, protocol: str) -> List[DIDCommV2Service]:
+        return [
+            service
+            for service in self.target_services
+            if service.service_endpoint.uri.startswith(protocol)
+        ]
 
 
 @dataclass
@@ -68,8 +81,8 @@ class DIDCommMessaging(Generic[P, S]):
             json.dumps(message).encode(), [to], frm, **options
         )
 
-        forward, service = await self.routing.prepare_forward(to, encoded_message)
-        return PackResult(forward, self.service_to_target(service))
+        forward, services = await self.routing.prepare_forward(to, encoded_message)
+        return PackResult(forward, services)
 
     async def unpack(self, encoded_message: bytes, **options) -> UnpackResult:
         """Unpack a message."""
