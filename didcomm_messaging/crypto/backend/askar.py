@@ -87,6 +87,16 @@ class AskarKey(PublicKey):
             key = cls.multikey_to_key(multikey)
             return cls(key, kid)
 
+        if vm.type == "JsonWebKey2020":
+            jwk = vm.public_key_jwk
+            if not jwk:
+                raise ValueError("JWK verification method missing key")
+            try:
+                key = Key.from_jwk(jwk)
+            except AskarError as err:
+                raise ValueError("Invalid JWK") from err
+            return cls(key, kid)
+
         alg = cls.type_to_alg.get(vm.type)
         if not alg:
             raise ValueError("Unsupported verification method type: {vm_type}")
