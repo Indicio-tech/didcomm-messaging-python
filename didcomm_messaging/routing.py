@@ -95,7 +95,6 @@ class RoutingService:
                         "typ": "application/didcomm-plain+json",
                         "type": "https://didcomm.org/routing/2.0/forward",
                         "id": str(uuid.uuid4()),
-                        # "frm": did, # Do we need this? Spec shows it missing in the example
                         "to": [service["did"]],
                         "body": {"next": next_target["did"]},
                         "attachments": [
