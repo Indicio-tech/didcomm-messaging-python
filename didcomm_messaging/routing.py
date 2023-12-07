@@ -3,7 +3,7 @@
 import json
 import uuid
 
-from typing import Tuple, List
+from typing import Tuple, List, Dict, Any
 from pydid.service import DIDCommV2Service
 from didcomm_messaging.packaging import PackagingService
 from didcomm_messaging.resolver import DIDResolver
@@ -39,6 +39,30 @@ class RoutingService:
         endpoint = service.service_endpoint.uri
         found_forwardable_service = await self.resolver.is_resolvable(endpoint)
         return found_forwardable_service
+
+    def _create_forward_message(
+        self,
+        to: str,
+        next_target: str,
+        message: str
+    ) -> Dict[Any, Any]:
+        return {
+            "typ": "application/didcomm-plain+json",
+            "type": "https://didcomm.org/routing/2.0/forward",
+            "id": str(uuid.uuid4()),
+            "to": [to],
+            # "expires_time": 123456, #  time to expire the forward message, in epoch time
+            "body": {"next": next_target},
+            "attachments": [
+                {
+                    "id": str(uuid.uuid4()),
+                    "media_type": "application/didcomm-encrypted+json",
+                    "data": {
+                        "json": json.loads(message),
+                    },
+                },
+            ],
+        }
 
     async def prepare_forward(
         self, to: str, encoded_message: bytes
@@ -92,22 +116,7 @@ class RoutingService:
         for service in chain:
             packed_message = await self.packaging.pack(
                 json.dumps(
-                    {
-                        "typ": "application/didcomm-plain+json",
-                        "type": "https://didcomm.org/routing/2.0/forward",
-                        "id": str(uuid.uuid4()),
-                        "to": [service["did"]],
-                        "body": {"next": next_target["did"]},
-                        "attachments": [
-                            {
-                                "id": str(uuid.uuid4()),
-                                "media_type": "application/didcomm-encrypted+json",
-                                "data": {
-                                    "json": json.loads(packed_message),
-                                },
-                            },
-                        ],
-                    }
+                    self._create_forward_message(service["did"], next_target["did"], packed_message)
                 ),
                 [service["did"]],
             )
