@@ -120,6 +120,8 @@ class RoutingService:
             # the list, then wrapping message following routing key order
             routing_keys = service["service"][0].service_endpoint.routing_keys
             routing_keys.insert(0, service["did"])  # prepend did
+
+            # Pack for each key
             while routing_keys:
                 key = routing_keys.pop()  # pop from end of list (reverse order)
                 packed_message = await self.packaging.pack(
@@ -128,8 +130,7 @@ class RoutingService:
                     ),
                     [key],
                 )
-                if routing_keys:
-                    next_target = routing_keys[-1]
+                next_target = key
             next_target = service["did"]
 
         # Return the forward-packed message as well as the last service in the
