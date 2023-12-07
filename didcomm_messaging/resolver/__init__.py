@@ -64,7 +64,7 @@ class PrefixResolver(DIDResolver):
         """Check to see if a DID is resolvable."""
         for prefix, resolver in self.resolvers.items():
             if did.startswith(prefix):
-                return True
+                return await resolver.is_resolvable(did)
         return False
 
     async def resolve(self, did: str) -> dict:
