@@ -131,7 +131,6 @@ class RoutingService:
                     [key],
                 )
                 next_target = key
-            next_target = service["did"]
 
         # Return the forward-packed message as well as the last service in the
         # chain, which is the destination of the top-level forward message.
