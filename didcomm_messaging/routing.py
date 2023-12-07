@@ -108,19 +108,29 @@ class RoutingService:
 
         # Grab our target to pack the initial message to, then pack the message
         # for the DID target
-        next_target = chain.pop(0)
+        next_target = chain.pop(0)["did"]
         packed_message = encoded_message
 
         # Loop through the entire services chain and pack the message for each
         # layer of mediators
         for service in chain:
-            packed_message = await self.packaging.pack(
-                json.dumps(
-                    self._create_forward_message(service["did"], next_target["did"], packed_message)
-                ),
-                [service["did"]],
-            )
-            next_target = service
+
+            # https://identity.foundation/didcomm-messaging/spec/#sender-process-to-enable-forwarding
+            # Respect routing keys by adding the current DID to the front of
+            # the list, then wrapping message following routing key order
+            routing_keys = service["service"][0].service_endpoint.routing_keys
+            routing_keys.insert(0, service["did"])  # prepend did
+            while routing_keys:
+                key = routing_keys.pop()  # pop from end of list (reverse order)
+                packed_message = await self.packaging.pack(
+                    json.dumps(
+                        self._create_forward_message(key, next_target, packed_message)
+                    ),
+                    [key],
+                )
+                if routing_keys:
+                    next_target = routing_keys[-1]
+            next_target = service["did"]
 
         # Return the forward-packed message as well as the last service in the
         # chain, which is the destination of the top-level forward message.
