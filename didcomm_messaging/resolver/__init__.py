@@ -24,6 +24,10 @@ class DIDResolver(ABC):
     async def resolve(self, did: str) -> dict:
         """Resolve a DID."""
 
+    @abstractmethod
+    async def is_resolvable(self, did: str) -> bool:
+        """Check to see if a DID is resolvable."""
+
     async def resolve_and_parse(self, did: str) -> DIDDocument:
         """Resolve a DID and parse the DID document."""
         doc = await self.resolve(did)
@@ -55,6 +59,13 @@ class PrefixResolver(DIDResolver):
     def __init__(self, resolvers: Dict[str, DIDResolver]):
         """Initialize the resolver."""
         self.resolvers = resolvers
+
+    async def is_resolvable(self, did: str) -> bool:
+        """Check to see if a DID is resolvable."""
+        for prefix, resolver in self.resolvers.items():
+            if did.startswith(prefix):
+                return await resolver.is_resolvable(did)
+        return False
 
     async def resolve(self, did: str) -> dict:
         """Resolve a DID."""
