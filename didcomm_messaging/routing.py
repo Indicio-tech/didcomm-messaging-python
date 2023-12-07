@@ -41,10 +41,7 @@ class RoutingService:
         return found_forwardable_service
 
     def _create_forward_message(
-        self,
-        to: str,
-        next_target: str,
-        message: str
+        self, to: str, next_target: str, message: str
     ) -> Dict[Any, Any]:
         return {
             "typ": "application/didcomm-plain+json",
@@ -114,7 +111,6 @@ class RoutingService:
         # Loop through the entire services chain and pack the message for each
         # layer of mediators
         for service in chain:
-
             # https://identity.foundation/didcomm-messaging/spec/#sender-process-to-enable-forwarding
             # Respect routing keys by adding the current DID to the front of
             # the list, then wrapping message following routing key order
