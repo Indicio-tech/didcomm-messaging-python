@@ -19,12 +19,15 @@ class PackResult:
     target_services: List[DIDCommV2Service]
 
     def get_endpoint(self, protocol: str) -> str:
+        """Get the first matching endpoint to send the message to."""
         return self.get_service(protocol).service_endpoint.uri
 
     def get_service(self, protocol: str) -> DIDCommV2Service:
+        """Get the first matching service to send the message to."""
         return self.filter_services_by_protocol(protocol)[0]
 
     def filter_services_by_protocol(self, protocol: str) -> List[DIDCommV2Service]:
+        """Get all services that start with a specific uri protocol."""
         return [
             service
             for service in self.target_services

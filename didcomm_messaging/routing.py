@@ -35,6 +35,7 @@ class RoutingService:
         return services
 
     async def is_forwardable_service(self, service: DIDCommV2Service) -> bool:
+        """Determine if the uri of a service is a service we should forward to."""
         endpoint = service.service_endpoint.uri
         found_forwardable_service = await self.resolver.is_resolvable(endpoint)
         return found_forwardable_service

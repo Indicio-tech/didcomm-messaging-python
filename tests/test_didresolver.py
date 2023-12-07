@@ -8,6 +8,9 @@ from didcomm_messaging.resolver import (
 
 
 class TestResolver(DIDResolver):
+    async def is_resolvable(self, did: str) -> bool:
+        return True
+
     async def resolve(self, did: str) -> dict:
         return {"did": did}
 
