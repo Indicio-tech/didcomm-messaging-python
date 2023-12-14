@@ -1,9 +1,11 @@
 [project]
 name = "didcomm-messaging"
-version = "0.1.0a0"
+version = "0.1.0a1"
 description = "DIDComm Messaging implemented with swappable backends."
 authors = [
     {name = "Daniel Bluhm", email = "dbluhm@pm.me"},
+    {name = "Colton Wolkins", email = "colton@indicio.tech"},
+    {name = "Micah Peltier", email = "micah@indicio.tech"},
 ]
 dependencies = [
     "base58>=2.1.1",
