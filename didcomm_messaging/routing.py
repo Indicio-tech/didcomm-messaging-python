@@ -105,7 +105,8 @@ class RoutingService:
 
         # Grab our target to pack the initial message to, then pack the message
         # for the DID target
-        next_target = chain.pop(0)["did"]
+        final_destination = chain.pop(0)
+        next_target = final_destination["did"]
         packed_message = encoded_message
 
         # Loop through the entire services chain and pack the message for each
@@ -130,4 +131,7 @@ class RoutingService:
 
         # Return the forward-packed message as well as the last service in the
         # chain, which is the destination of the top-level forward message.
-        return (packed_message, chain[-1]["service"])
+        service = final_destination["service"]
+        if len(chain):
+            service = chain[-1]["service"]
+        return (packed_message, service)
