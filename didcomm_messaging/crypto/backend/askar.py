@@ -306,6 +306,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
         builder.set_protected(
             OrderedDict(
                 [
+                    ("typ", "application/didcomm+encrypted"),
                     ("alg", alg_id),
                     ("enc", enc_id),
                     ("apu", b64url(apu)),
