@@ -103,6 +103,10 @@ class RoutingService:
         if not chain[-1]["service"]:
             raise RoutingServiceError(f"No DIDCommV2 service endpoint found for {to}")
 
+        # If we didn't find any services to forward to, just bail
+        if len(chain) == 1:
+            return (encoded_message, chain[-1]["service"])
+
         # Grab our target to pack the initial message to, then pack the message
         # for the DID target
         final_destination = chain.pop(0)
