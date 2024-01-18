@@ -341,11 +341,17 @@ async def setup_relay(
     return new_did
 
 
+async def _message_callback(msg: Message) -> None:
+    if msg.type == "https://didcomm.org/basicmessage/2.0/message":
+        logmsg = msg.body["content"].replace("\n", " ").replace("\r", "")
+        LOG.info("Got message: %s", logmsg)
+
+
 async def fetch_relayed_messages(
     dmp: DIDCommMessaging,
     my_did: DID,
     relay_did: DID,
-    callback: Callable[[Message], Awaitable[None]] = None,
+    callback: Callable[[Message], Awaitable[None]] = _message_callback,
 ) -> List[Message]:
     """Fetch stored messages from the relay."""
 
@@ -388,10 +394,6 @@ async def fetch_relayed_messages(
         # Call callback if it exists, passing the message in
         if callback:
             await callback(msg)
-
-        if msg.type == "https://didcomm.org/basicmessage/2.0/message":
-            logmsg = msg.body["content"].replace("\n", " ").replace("\r", "")
-            LOG.info(f"Got message: %s", logmsg)
 
         message = Message(
             type="https://didcomm.org/messagepickup/3.0/messages-received",
