@@ -99,7 +99,7 @@ class CompatibilityPrefixResolver(PrefixResolver):
 
 
 def generate_did():
-    """Use Askar to generate encryption/verification keys, then a DID from both."""
+    """Use Askar to generate encryption/verification keys, then return a DID from both."""
 
     verkey = Key.generate(KeyAlg.ED25519)
     xkey = Key.generate(KeyAlg.X25519)
@@ -134,6 +134,7 @@ def generate_did():
 
 
 async def setup_default(did, did_secrets, enable_compatibility_prefix=False):
+    """Setup a pre-configured DIDCommMessaging instance."""
 
     # The Crypto Service is used to encrypt, decrypt, sign and verify messages.
     # Askar is a pretty solid choice for these tasks.
@@ -203,6 +204,7 @@ async def setup_default(did, did_secrets, enable_compatibility_prefix=False):
 async def send_http_message(
     dmp: DIDCommMessaging, my_did: DID, message: Message, target: DID
 ):
+    """Send a message via HTTP."""
 
     # Get the message as a dictionary
     message_wrapper = message
@@ -239,6 +241,9 @@ async def send_http_message(
 async def setup_relay(
     dmp: DIDCommMessaging, my_did: DID, relay_did: DID, keys: Sequence[Key]
 ) -> Union[DID, None]:
+    """Negotiate services with an outbound relay.
+
+    Returns a DID upon successful negotiation."""
 
     # Request mediation from the outbound relay
     message = Message(
@@ -315,6 +320,7 @@ async def fetch_relayed_messages(
     relay_did: DID,
     callback: Callable[[Message], Awaitable[None]] = None,
 ) -> List[Message]:
+    """Fetch stored messages from the relay."""
 
     # Fetch a count of all stored messages
     message = Message(
