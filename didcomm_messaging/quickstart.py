@@ -1,6 +1,8 @@
+"""Quickstart helpers for beginner users of DIDComm."""
 from typing import Optional, Dict, List, Any, Union, Callable, Awaitable, Sequence
 import aiohttp
-import attr, attrs
+import attr
+import attrs
 import json
 import logging
 import uuid
@@ -28,7 +30,7 @@ LOG = logging.getLogger(__name__)
 
 @attr.s(auto_attribs=True)
 class Message:
-    """Provide a nicer interface for messages than just Dictionaries"""
+    """Provide a nicer interface for messages than just Dictionaries."""
 
     type: str
     body: JSON_OBJ
@@ -51,15 +53,18 @@ class Message:
     # TODO: Add message validation for spec-defined fields
 
     def __attrs_post_init__(self):
+        """Ensure that id is set."""
         # super().__init__(*args, **kwargs)
         if self.id is None:
             self.id = str(uuid.uuid4())
 
     def as_dict(self):
+        """Return message as a dictionary for serialization."""
         return attrs.asdict(self, filter=(lambda _, x: x is not None))
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data: str):
+        """Create a Message object from a JSON string."""
         data = json.loads(data)
         if "from" in data:
             data["frm"] = data["from"]
@@ -298,8 +303,10 @@ async def setup_relay(
     await secrets.add_secret(AskarSecretKey(keys[1], f"{new_did}#key-2"))
 
     # Legacy formats
-    await secrets.add_secret(AskarSecretKey(verkey, doc.authentication[0]))
-    await secrets.add_secret(AskarSecretKey(xkey, doc.key_agreement[0]))
+    # verkey
+    await secrets.add_secret(AskarSecretKey(keys[0], doc.authentication[0]))
+    # xkey
+    await secrets.add_secret(AskarSecretKey(keys[1], doc.key_agreement[0]))
 
     # Send a message to the relay informing it of our new endpoint that people
     # should contact us by
@@ -359,7 +366,7 @@ async def fetch_relayed_messages(
 
     # Handle each stored message is order we receive it
     for attach in message.attachments:
-        logger.info("Received message %s", attach["id"][:-58])
+        LOG.info("Received message %s", attach["id"][:-58])
 
         # Decrypt/Unpack the encrypted message attachment
         unpacked = await dmp.packaging.unpack(json.dumps(attach["data"]["json"]))
@@ -372,7 +379,7 @@ async def fetch_relayed_messages(
 
         if msg.type == "https://didcomm.org/basicmessage/2.0/message":
             logmsg = msg.body["content"].replace("\n", " ").replace("\r", "")
-            logger.info(f"Got message: {logmsg}")
+            LOG.info(f"Got message: {logmsg}")
 
         message = Message(
             type="https://didcomm.org/messagepickup/3.0/messages-received",
