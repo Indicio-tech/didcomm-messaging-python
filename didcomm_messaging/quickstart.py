@@ -7,7 +7,6 @@ from typing import (
     Union,
     Callable,
     Awaitable,
-    Sequence,
     Tuple,
 )
 import aiohttp
@@ -263,7 +262,7 @@ async def send_http_message(
 
 
 async def setup_relay(
-    dmp: DIDCommMessaging, my_did: DID, relay_did: DID, keys: Tuple[Key]
+    dmp: DIDCommMessaging, my_did: DID, relay_did: DID, verkey: Key, xkey: Key
 ) -> Union[DID, None]:
     """Negotiate services with an inbound relay.
 
@@ -293,13 +292,13 @@ async def setup_relay(
         [
             KeySpec.verification(
                 multibase.encode(
-                    multicodec.wrap("ed25519-pub", key[0].get_public_bytes()),
+                    multicodec.wrap("ed25519-pub", verkey.get_public_bytes()),
                     "base58btc",
                 )
             ),
             KeySpec.key_agreement(
                 multibase.encode(
-                    multicodec.wrap("x25519-pub", key[1].get_public_bytes()), "base58btc"
+                    multicodec.wrap("x25519-pub", xkey.get_public_bytes()), "base58btc"
                 )
             ),
         ],
@@ -323,14 +322,14 @@ async def setup_relay(
     # destined to us via our new DID
     doc = await resolver.resolve_and_parse(new_did)
     # New format, key-# is in order of keys in did
-    await secrets.add_secret(AskarSecretKey(keys[0], f"{new_did}#key-1"))
-    await secrets.add_secret(AskarSecretKey(keys[1], f"{new_did}#key-2"))
+    await secrets.add_secret(AskarSecretKey(verkey, f"{new_did}#key-1"))
+    await secrets.add_secret(AskarSecretKey(xkey, f"{new_did}#key-2"))
 
     # Legacy formats
     # verkey
-    await secrets.add_secret(AskarSecretKey(keys[0], doc.authentication[0]))
+    await secrets.add_secret(AskarSecretKey(verkey, doc.authentication[0]))
     # xkey
-    await secrets.add_secret(AskarSecretKey(keys[1], doc.key_agreement[0]))
+    await secrets.add_secret(AskarSecretKey(xkey, doc.key_agreement[0]))
 
     # Send a message to the relay informing it of our new endpoint that people
     # should contact us by
