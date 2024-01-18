@@ -56,7 +56,7 @@ class Message:
             self.id = str(uuid.uuid4())
 
     def as_dict(self):
-        return attrs.asdict(self, filter=(lambda _, x: not x is None))
+        return attrs.asdict(self, filter=(lambda _, x: x is not None))
 
     @classmethod
     def from_json(cls, data):
@@ -250,7 +250,8 @@ async def setup_relay(
 ) -> Union[DID, None]:
     """Negotiate services with an outbound relay.
 
-    Returns a DID upon successful negotiation."""
+    Returns a DID upon successful negotiation.
+    """
 
     # Request mediation from the outbound relay
     message = Message(
