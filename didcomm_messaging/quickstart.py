@@ -1,8 +1,9 @@
-from typing import Optional, Dict, List, Any, Union
+from typing import Optional, Dict, List, Any, Union, Callable, Awaitable, Sequence
 import aiohttp
 import attr, attrs
-import uuid
+import json
 import logging
+import uuid
 
 from did_peer_2 import KeySpec, generate
 from pydid.did import DID
@@ -58,7 +59,6 @@ class Message:
 
     @classmethod
     def from_json(cls, data):
-        import json
         data = json.loads(data)
         if "from" in data:
             data["frm"] = data["from"]
@@ -201,7 +201,7 @@ async def setup_default(did, did_secrets, enable_compatibility_prefix=False):
 
 
 async def send_http_message(
-    dmp, fromdid, message: Message, target: DID
+    dmp: DIDCommMessaging, my_did: DID, message: Message, target: DID
 ):
 
     # Get the message as a dictionary
@@ -212,7 +212,7 @@ async def send_http_message(
     packy = await dmp.pack(
         message=message,
         to=target,
-        frm=fromdid,
+        frm=my_did,
     )
     packed = packy.message
 
@@ -236,48 +236,137 @@ async def send_http_message(
     return
 
 
-# TODO: Convert this into a friendly method/class to aid in mediation
-# async def fetch_messages(self):
-#     """Fetch new messages from the mediator that have yet to be handled.
-#     """
-#     message = Message(
-#         type="https://didcomm.org/messagepickup/3.0/status-request",
-#         id=str(uuid.uuid4()),
-#         body={},
-#         frm=self.my_did,
-#         to=[MEDIATOR_DID],
-#     )
-#     message = await self.sendMessage(message, target=MEDIATOR_DID)
+async def setup_relay(
+    dmp: DIDCommMessaging, my_did: DID, relay_did: DID, keys: Sequence[Key]
+) -> Union[DID, None]:
 
-#     if message.body["message_count"] > 0:
-#         message = Message(
-#             type="https://didcomm.org/messagepickup/3.0/delivery-request",
-#             id=str(uuid.uuid4()),
-#             body={
-#                 "limit": message.body["message_count"],
-#             },
-#             frm=self.my_did,
-#             to=[MEDIATOR_DID],
-#         )
-#         message = await self.sendMessage(message, target=MEDIATOR_DID)
-#         for attach in message.attachments:
-#             logger.info("Received message %s", attach.id[:-58])
-#             unpacked = await self.get_didcomm().packaging.unpack(json.dumps(attach.data.json))
-#             msg = unpacked[0].decode()
-#             msg =  Message.from_json(msg)
-#             await self.handle_message(msg.type, msg)
-#             if msg.type == "https://didcomm.org/basicmessage/2.0/message":
-#                 logmsg = msg.body['content'].replace('\n', ' ').replace('\r', '')
-#                 logger.info(f"Got message: {logmsg}")
-#             message = Message(
-#                 type="https://didcomm.org/messagepickup/3.0/messages-received",
-#                 id=str(uuid.uuid4()),
-#                 body={
-#                     "message_id_list": [msg.id for msg in message.attachments],
-#                 },
-#                 frm=self.my_did,
-#                 to=[MEDIATOR_DID],
-#             )
-#             message = await self.sendMessage(message, target=MEDIATOR_DID)
+    # Request mediation from the outbound relay
+    message = Message(
+        type="https://didcomm.org/coordinate-mediation/3.0/mediate-request",
+        id=str(uuid.uuid4()),
+        body={},
+        frm=my_did,
+        to=[relay_did],
+    )
+    message = await send_http_message(dmp, my_did, message, target=relay_did)
 
-#             return
+    # Verify that mediation-access has been granted
+    if message.type == "https://didcomm.org/coordinate-mediation/3.0/mediate-deny":
+        return
+    if message.type != "https://didcomm.org/coordinate-mediation/3.0/mediate-grant":
+        # We shouldn't run into this case, but it's possible
+        raise Exception("Unknown response type received: %s" % message.type)
+
+    # Create a new DID with an updated service endpoint, pointing to our relay
+    relay_did = message.body["routing_did"][0]
+    new_did = generate(
+        keys,
+        [
+            {
+                "type": "DIDCommMessaging",
+                "serviceEndpoint": {
+                    "uri": relay_did,
+                    "accept": ["didcomm/v2"],
+                },
+            }
+        ],
+    )
+    LOG.info("relayed did: ", new_did)
+
+    # A couple of helpers variables to simplify the next few lines
+    resolver = dmp.resolver
+    secrets = dmp.secrets
+
+    # Add the DID to our secrets manager so that we can unpack messages
+    # destined to us via our new DID
+    doc = await resolver.resolve_and_parse(new_did)
+    # New format, key-# is in order of keys in did
+    await secrets.add_secret(AskarSecretKey(keys[0], f"{new_did}#key-1"))
+    await secrets.add_secret(AskarSecretKey(keys[1], f"{new_did}#key-2"))
+
+    # Legacy formats
+    await secrets.add_secret(AskarSecretKey(verkey, doc.authentication[0]))
+    await secrets.add_secret(AskarSecretKey(xkey, doc.key_agreement[0]))
+
+    # Send a message to the relay informing it of our new endpoint that people
+    # should contact us by
+    message = Message(
+       type="https://didcomm.org/coordinate-mediation/3.0/recipient-update",
+       id=str(uuid.uuid4()),
+       body={
+           "updates": [
+               {
+                   "recipient_did": new_did,
+                   "action": "add",
+               },
+           ],
+       },
+       frm=my_did,
+       to=[relay_did],
+    )
+    message = await send_http_message(dmp, my_did, message, target=relay_did)
+
+    return new_did
+
+
+async def fetch_relayed_messages(
+    dmp: DIDCommMessaging,
+    my_did: DID,
+    relay_did: DID,
+    callback: Callable[[Message], Awaitable[None]] = None,
+) -> List[Message]:
+
+    # Fetch a count of all stored messages
+    message = Message(
+        type="https://didcomm.org/messagepickup/3.0/status-request",
+        id=str(uuid.uuid4()),
+        body={},
+        frm=my_did,
+        to=[relay_did],
+    )
+    message = await send_http_message(dmp, my_did, message, target=relay_did)
+
+    # If there's no messages, we can return early
+    if message.body["message_count"] == 0:
+        return []
+
+    # Request messages that are stored at the relay, according to the
+    # message_count returned in the previous call
+    message = Message(
+        type="https://didcomm.org/messagepickup/3.0/delivery-request",
+        id=str(uuid.uuid4()),
+        body={
+            "limit": message.body["message_count"],
+        },
+        frm=my_did,
+        to=[relay_did],
+    )
+    message = await send_http_message(dmp, my_did, message, target=relay_did)
+
+    # Handle each stored message is order we receive it
+    for attach in message.attachments:
+        logger.info("Received message %s", attach["id"][:-58])
+
+        # Decrypt/Unpack the encrypted message attachment
+        unpacked = await dmp.packaging.unpack(json.dumps(attach["data"]["json"]))
+        msg = unpacked.message
+        msg = Message.from_json(msg)
+
+        # Call callback if it exists, passing the message in
+        if callback:
+            await callback(msg)
+
+        if msg.type == "https://didcomm.org/basicmessage/2.0/message":
+            logmsg = msg.body['content'].replace('\n', ' ').replace('\r', '')
+            logger.info(f"Got message: {logmsg}")
+
+        message = Message(
+            type="https://didcomm.org/messagepickup/3.0/messages-received",
+            id=str(uuid.uuid4()),
+            body={
+                "message_id_list": [msg.id for msg in message.attachments],
+            },
+            frm=my_did,
+            to=[relay_did],
+        )
+        await send_http_message(dmp, my_did, message, target=relay_did)
