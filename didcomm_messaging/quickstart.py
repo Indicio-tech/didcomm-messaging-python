@@ -263,7 +263,7 @@ async def send_http_message(
 
 
 async def setup_relay(
-    dmp: DIDCommMessaging, my_did: DID, relay_did: DID, keys: Sequence[Key]
+    dmp: DIDCommMessaging, my_did: DID, relay_did: DID, keys: Tuple[Key]
 ) -> Union[DID, None]:
     """Negotiate services with an inbound relay.
 
@@ -290,7 +290,19 @@ async def setup_relay(
     # Create a new DID with an updated service endpoint, pointing to our relay
     relay_did = message.body["routing_did"][0]
     new_did = generate(
-        keys,
+        [
+            KeySpec.verification(
+                multibase.encode(
+                    multicodec.wrap("ed25519-pub", key[0].get_public_bytes()),
+                    "base58btc",
+                )
+            ),
+            KeySpec.key_agreement(
+                multibase.encode(
+                    multicodec.wrap("x25519-pub", key[1].get_public_bytes()), "base58btc"
+                )
+            ),
+        ],
         [
             {
                 "type": "DIDCommMessaging",
