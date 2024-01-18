@@ -25,6 +25,7 @@ JSON_VALUE = Union[None, str, int, bool, float, JSON_OBJ, List[Any]]
 
 LOG = logging.getLogger(__name__)
 
+
 @attr.s(auto_attribs=True)
 class Message:
     """Provide a nicer interface for messages than just Dictionaries"""
@@ -45,12 +46,12 @@ class Message:
 
     # TODO: better implement/support these fields
     attachments: Optional[List[Attachment]] = None
-    #from_prior: Optional[JWT] = None
+    # from_prior: Optional[JWT] = None
 
     # TODO: Add message validation for spec-defined fields
 
     def __attrs_post_init__(self):
-        #super().__init__(*args, **kwargs)
+        # super().__init__(*args, **kwargs)
         if self.id is None:
             self.id = str(uuid.uuid4())
 
@@ -81,13 +82,15 @@ class CompatibilityPrefixResolver(PrefixResolver):
     async def resolve_and_parse(self, did: str) -> DIDDocument:
         """Resolve a DID and parse the DID document."""
         doc = await self.resolve(did)
-        #return DIDDocument.deserialize(doc)
+        # return DIDDocument.deserialize(doc)
         id_map = {}
+
         def set_id(method):
             new_id = method["publicKeyMultibase"][1:9]
             id_map[method["id"]] = new_id
             method["id"] = did + "#" + new_id
             return method
+
         doc["verificationMethod"] = [
             set_id(method) for method in doc["verificationMethod"]
         ]
@@ -122,11 +125,9 @@ def generate_did():
                 "type": "DIDCommMessaging",
                 "serviceEndpoint": {
                     "uri": "didcomm:transport/queue",
-                    "accept": [
-                        "didcomm/v2"
-                    ],
-                    "routingKeys": []
-                }
+                    "accept": ["didcomm/v2"],
+                    "routingKeys": [],
+                },
             }
         ],
     )
@@ -155,7 +156,9 @@ async def setup_default(did, did_secrets, enable_compatibility_prefix=False):
     # At present, the PrefixResolver is used to determine which library should
     # be used to convert a DID into a DIDDocument.
     if enable_compatibility_prefix:
-        resolver = CompatibilityPrefixResolver({"did:peer:2": Peer2(), "did:peer:4": Peer4()})
+        resolver = CompatibilityPrefixResolver(
+            {"did:peer:2": Peer2(), "did:peer:4": Peer4()}
+        )
     else:
         resolver = PrefixResolver({"did:peer:2": Peer2(), "did:peer:4": Peer4()})
 
@@ -165,9 +168,7 @@ async def setup_default(did, did_secrets, enable_compatibility_prefix=False):
     # message to a single target, however. If the message needs to be forwarded
     # (because the recipient is behind a relay), then those messages will need
     # to be handled by the RoutingService.
-    packer = PackagingService(
-        resolver, crypto, secrets
-    )
+    packer = PackagingService(resolver, crypto, secrets)
 
     # The RoutingService handles the routing of messages through relays. When a
     # message needs to be forwarded, the RoutingService will handle wrapping
@@ -196,7 +197,13 @@ async def setup_default(did, did_secrets, enable_compatibility_prefix=False):
     # DIDCommMessaging handles the orchestration of each individual service,
     # ensuring that messages get packed and delivered via a simple and straight
     # forward interface.
-    DMP = DIDCommMessaging(crypto=crypto, secrets=secrets, resolver=resolver, packaging=packer, routing=router)
+    DMP = DIDCommMessaging(
+        crypto=crypto,
+        secrets=secrets,
+        resolver=resolver,
+        packaging=packer,
+        routing=router,
+    )
 
     return DMP
 
@@ -296,18 +303,18 @@ async def setup_relay(
     # Send a message to the relay informing it of our new endpoint that people
     # should contact us by
     message = Message(
-       type="https://didcomm.org/coordinate-mediation/3.0/recipient-update",
-       id=str(uuid.uuid4()),
-       body={
-           "updates": [
-               {
-                   "recipient_did": new_did,
-                   "action": "add",
-               },
-           ],
-       },
-       frm=my_did,
-       to=[relay_did],
+        type="https://didcomm.org/coordinate-mediation/3.0/recipient-update",
+        id=str(uuid.uuid4()),
+        body={
+            "updates": [
+                {
+                    "recipient_did": new_did,
+                    "action": "add",
+                },
+            ],
+        },
+        frm=my_did,
+        to=[relay_did],
     )
     message = await send_http_message(dmp, my_did, message, target=relay_did)
 
@@ -363,7 +370,7 @@ async def fetch_relayed_messages(
             await callback(msg)
 
         if msg.type == "https://didcomm.org/basicmessage/2.0/message":
-            logmsg = msg.body['content'].replace('\n', ' ').replace('\r', '')
+            logmsg = msg.body["content"].replace("\n", " ").replace("\r", "")
             logger.info(f"Got message: {logmsg}")
 
         message = Message(
