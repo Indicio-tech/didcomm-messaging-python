@@ -1,5 +1,15 @@
 """Quickstart helpers for beginner users of DIDComm."""
-from typing import Optional, Dict, List, Any, Union, Callable, Awaitable, Sequence
+from typing import (
+    Optional,
+    Dict,
+    List,
+    Any,
+    Union,
+    Callable,
+    Awaitable,
+    Sequence,
+    Tuple,
+)
 import aiohttp
 import attr
 import attrs
@@ -106,7 +116,7 @@ class CompatibilityPrefixResolver(PrefixResolver):
         return DIDDocument.deserialize(doc)
 
 
-def generate_did():
+def generate_did() -> Tuple[DID, Tuple[Key, Key]]:
     """Use Askar to generate encryption/verification keys, then return a DID from both."""
 
     verkey = Key.generate(KeyAlg.ED25519)
@@ -139,7 +149,9 @@ def generate_did():
     return did, (verkey, xkey)
 
 
-async def setup_default(did, did_secrets, enable_compatibility_prefix=False):
+async def setup_default(
+    did: DID, did_secrets: Tuple[Key, Key], enable_compatibility_prefix: bool = False
+) -> DIDCommMessaging:
     """Setup a pre-configured DIDCommMessaging instance."""
 
     # The Crypto Service is used to encrypt, decrypt, sign and verify messages.
@@ -215,7 +227,7 @@ async def setup_default(did, did_secrets, enable_compatibility_prefix=False):
 
 async def send_http_message(
     dmp: DIDCommMessaging, my_did: DID, message: Message, target: DID
-):
+) -> Optional[Message]:
     """Send a message via HTTP."""
 
     # Get the message as a dictionary
@@ -234,18 +246,18 @@ async def send_http_message(
     endpoint = packy.get_endpoint("http")
 
     async with aiohttp.ClientSession() as session:
-        LOG.info("posting message type %s to %s" % (message_wrapper.type, endpoint))
+        LOG.info("posting message type %s to %s", message_wrapper.type, endpoint)
 
         async with session.post(endpoint, data=packed) as resp:
-            LOG.debug("posted message: %s" % (message))
-            LOG.debug("message ID: %s" % (message_wrapper.id))
+            LOG.debug("posted message: %s", message)
+            LOG.debug("message ID: %s", message_wrapper.id)
             packed = await resp.text()
 
             # If the HTTP enpoint responded with a message, decode it
             if len(packed) > 0:
                 unpacked = await dmp.packaging.unpack(packed)
                 msg = unpacked[0].decode()
-                LOG.debug("Raw message from remote %s" % msg)
+                LOG.debug("Raw message from remote %s", msg)
                 return Message.from_json(msg)
     return
 
@@ -253,12 +265,12 @@ async def send_http_message(
 async def setup_relay(
     dmp: DIDCommMessaging, my_did: DID, relay_did: DID, keys: Sequence[Key]
 ) -> Union[DID, None]:
-    """Negotiate services with an outbound relay.
+    """Negotiate services with an inbound relay.
 
     Returns a DID upon successful negotiation.
     """
 
-    # Request mediation from the outbound relay
+    # Request mediation from the inbound relay
     message = Message(
         type="https://didcomm.org/coordinate-mediation/3.0/mediate-request",
         id=str(uuid.uuid4()),
@@ -289,7 +301,7 @@ async def setup_relay(
             }
         ],
     )
-    LOG.info("relayed did: ", new_did)
+    LOG.info("relayed did: %s", new_did)
 
     # A couple of helpers variables to simplify the next few lines
     resolver = dmp.resolver
@@ -369,7 +381,7 @@ async def fetch_relayed_messages(
         LOG.info("Received message %s", attach["id"][:-58])
 
         # Decrypt/Unpack the encrypted message attachment
-        unpacked = await dmp.packaging.unpack(json.dumps(attach["data"]["json"]))
+        unpacked = await dmp.unpack(json.dumps(attach["data"]["json"]))
         msg = unpacked.message
         msg = Message.from_json(msg)
 
@@ -379,7 +391,7 @@ async def fetch_relayed_messages(
 
         if msg.type == "https://didcomm.org/basicmessage/2.0/message":
             logmsg = msg.body["content"].replace("\n", " ").replace("\r", "")
-            LOG.info(f"Got message: {logmsg}")
+            LOG.info(f"Got message: %s", logmsg)
 
         message = Message(
             type="https://didcomm.org/messagepickup/3.0/messages-received",
