@@ -10,8 +10,6 @@ from typing import (
     Tuple,
 )
 import aiohttp
-import attr
-import attrs
 import json
 import logging
 import uuid
@@ -35,50 +33,6 @@ Attachment = JSON_OBJ
 JSON_VALUE = Union[None, str, int, bool, float, JSON_OBJ, List[Any]]
 
 LOG = logging.getLogger(__name__)
-
-
-@attr.s(auto_attribs=True)
-class Message:
-    """Provide a nicer interface for messages than just Dictionaries."""
-
-    type: str
-    body: JSON_OBJ
-    id: Optional[str] = None
-    typ: Optional[str] = "application/didcomm-plain+json"
-    frm: Optional[DID] = None
-    to: Optional[List[DID]] = None
-    lang: Optional[str] = None
-    created_time: Optional[int] = None
-    expires_time: Optional[int] = None
-    thid: Optional[str] = None
-    pthid: Optional[str] = None
-    please_ack: Optional[List[str]] = None
-    ack: Optional[List[str]] = None
-
-    # TODO: better implement/support these fields
-    attachments: Optional[List[Attachment]] = None
-    # from_prior: Optional[JWT] = None
-
-    # TODO: Add message validation for spec-defined fields
-
-    def __attrs_post_init__(self):
-        """Ensure that id is set."""
-        # super().__init__(*args, **kwargs)
-        if self.id is None:
-            self.id = str(uuid.uuid4())
-
-    def as_dict(self):
-        """Return message as a dictionary for serialization."""
-        return attrs.asdict(self, filter=(lambda _, x: x is not None))
-
-    @classmethod
-    def from_json(cls, data: str):
-        """Create a Message object from a JSON string."""
-        data = json.loads(data)
-        if "from" in data:
-            data["frm"] = data["from"]
-            del data["from"]
-        return cls(**data)
 
 
 class CompatibilityPrefixResolver(PrefixResolver):
@@ -225,13 +179,13 @@ async def setup_default(
 
 
 async def send_http_message(
-    dmp: DIDCommMessaging, my_did: DID, message: Message, target: DID
-) -> Optional[Message]:
+    dmp: DIDCommMessaging, my_did: DID, message: Dict[str, Any], target: DID
+) -> Optional[Dict[str, Any]]:
     """Send a message via HTTP."""
 
-    # Get the message as a dictionary
-    message_wrapper = message
-    message = message_wrapper.as_dict()
+    # Ensure an ID is on the message
+    if "id" not in message or not message["id"]:
+        message["id"] = str(uuid.uuid4())
 
     # Encrypt/pack the message to our target
     packy = await dmp.pack(
@@ -245,19 +199,28 @@ async def send_http_message(
     endpoint = packy.get_endpoint("http")
 
     async with aiohttp.ClientSession() as session:
-        LOG.info("posting message type %s to %s", message_wrapper.type, endpoint)
+        LOG.info("posting message type %s to %s", message["type"], endpoint)
 
         async with session.post(endpoint, data=packed) as resp:
-            LOG.debug("posted message: %s", message)
-            LOG.debug("message ID: %s", message_wrapper.id)
+            # Get the message from the response and prepare for decryption
             packed = await resp.text()
+
+            # Dump useful information about the message
+            LOG.debug("posted message: %s", message)
+            LOG.debug("message ID: %s", message["id"])
+            LOG.debug("response code: %s", resp.status)
+            LOG.debug("response message: %s", packed)
+
+            # Raise an exception if the destination did not return success
+            if resp.status != 200:
+                raise Exception("Destination responded with error: %s" % packed)
 
             # If the HTTP enpoint responded with a message, decode it
             if len(packed) > 0:
                 unpacked = await dmp.packaging.unpack(packed)
                 msg = unpacked[0].decode()
                 LOG.debug("Raw message from remote %s", msg)
-                return Message.from_json(msg)
+                return json.loads(msg)
     return
 
 
@@ -270,24 +233,24 @@ async def setup_relay(
     """
 
     # Request mediation from the inbound relay
-    message = Message(
-        type="https://didcomm.org/coordinate-mediation/3.0/mediate-request",
-        id=str(uuid.uuid4()),
-        body={},
-        frm=my_did,
-        to=[relay_did],
-    )
+    message = {
+        "type": "https://didcomm.org/coordinate-mediation/3.0/mediate-request",
+        "id": str(uuid.uuid4()),
+        "body": {},
+        "frm": my_did,
+        "to": [relay_did],
+    }
     message = await send_http_message(dmp, my_did, message, target=relay_did)
 
     # Verify that mediation-access has been granted
-    if message.type == "https://didcomm.org/coordinate-mediation/3.0/mediate-deny":
+    if message["type"] == "https://didcomm.org/coordinate-mediation/3.0/mediate-deny":
         return
-    if message.type != "https://didcomm.org/coordinate-mediation/3.0/mediate-grant":
+    if message["type"] != "https://didcomm.org/coordinate-mediation/3.0/mediate-grant":
         # We shouldn't run into this case, but it's possible
-        raise Exception("Unknown response type received: %s" % message.type)
+        raise Exception("Unknown response type received: %s" % message["type"])
 
     # Create a new DID with an updated service endpoint, pointing to our relay
-    relay_did = message.body["routing_did"][0]
+    relay_did = message["body"]["routing_did"][0]
     new_did = generate(
         [
             KeySpec.verification(
@@ -333,10 +296,10 @@ async def setup_relay(
 
     # Send a message to the relay informing it of our new endpoint that people
     # should contact us by
-    message = Message(
-        type="https://didcomm.org/coordinate-mediation/3.0/recipient-update",
-        id=str(uuid.uuid4()),
-        body={
+    message = {
+        "type": "https://didcomm.org/coordinate-mediation/3.0/recipient-update",
+        "id": str(uuid.uuid4()),
+        "body": {
             "updates": [
                 {
                     "recipient_did": new_did,
@@ -344,16 +307,16 @@ async def setup_relay(
                 },
             ],
         },
-        frm=my_did,
-        to=[relay_did],
-    )
+        "frm": my_did,
+        "to": [relay_did],
+    }
     message = await send_http_message(dmp, my_did, message, target=relay_did)
 
     return new_did
 
 
-async def _message_callback(msg: Message) -> None:
-    if msg.type == "https://didcomm.org/basicmessage/2.0/message":
+async def _message_callback(msg: Dict[str, Any]) -> None:
+    if msg["type"] == "https://didcomm.org/basicmessage/2.0/message":
         logmsg = msg.body["content"].replace("\n", " ").replace("\r", "")
         LOG.info("Got message: %s", logmsg)
 
@@ -362,57 +325,56 @@ async def fetch_relayed_messages(
     dmp: DIDCommMessaging,
     my_did: DID,
     relay_did: DID,
-    callback: Callable[[Message], Awaitable[None]] = _message_callback,
-) -> List[Message]:
+    callback: Callable[[Dict[str, Any]], Awaitable[None]] = _message_callback,
+) -> None:
     """Fetch stored messages from the relay."""
 
     # Fetch a count of all stored messages
-    message = Message(
-        type="https://didcomm.org/messagepickup/3.0/status-request",
-        id=str(uuid.uuid4()),
-        body={},
-        frm=my_did,
-        to=[relay_did],
-    )
+    message = {
+        "type": "https://didcomm.org/messagepickup/3.0/status-request",
+        "id": str(uuid.uuid4()),
+        "body": {},
+        "frm": my_did,
+        "to": [relay_did],
+    }
     message = await send_http_message(dmp, my_did, message, target=relay_did)
 
     # If there's no messages, we can return early
-    if message.body["message_count"] == 0:
+    if message["body"]["message_count"] == 0:
         return []
 
     # Request messages that are stored at the relay, according to the
     # message_count returned in the previous call
-    message = Message(
-        type="https://didcomm.org/messagepickup/3.0/delivery-request",
-        id=str(uuid.uuid4()),
-        body={
-            "limit": message.body["message_count"],
+    message = {
+        "type": "https://didcomm.org/messagepickup/3.0/delivery-request",
+        "id": str(uuid.uuid4()),
+        "body": {
+            "limit": message["body"]["message_count"],
         },
-        frm=my_did,
-        to=[relay_did],
-    )
+        "frm": my_did,
+        "to": [relay_did],
+    }
     message = await send_http_message(dmp, my_did, message, target=relay_did)
 
     # Handle each stored message is order we receive it
-    for attach in message.attachments:
+    for attach in message["attachments"]:
         LOG.info("Received message %s", attach["id"][:-58])
 
         # Decrypt/Unpack the encrypted message attachment
         unpacked = await dmp.unpack(json.dumps(attach["data"]["json"]))
         msg = unpacked.message
-        msg = Message.from_json(msg)
 
         # Call callback if it exists, passing the message in
         if callback:
             await callback(msg)
 
-        message = Message(
-            type="https://didcomm.org/messagepickup/3.0/messages-received",
-            id=str(uuid.uuid4()),
-            body={
-                "message_id_list": [msg.id for msg in message.attachments],
+        message = {
+            "type": "https://didcomm.org/messagepickup/3.0/messages-received",
+            "id": str(uuid.uuid4()),
+            "body": {
+                "message_id_list": [msg["id"] for msg in message["attachments"]],
             },
-            frm=my_did,
-            to=[relay_did],
-        )
+            "frm": my_did,
+            "to": [relay_did],
+        }
         await send_http_message(dmp, my_did, message, target=relay_did)
