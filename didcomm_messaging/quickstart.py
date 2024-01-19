@@ -187,6 +187,10 @@ async def send_http_message(
     if "id" not in message or not message["id"]:
         message["id"] = str(uuid.uuid4())
 
+    # Ensure that a typ is on the message
+    if "typ" not in message or not message["typ"]:
+        message["typ"] = "application/didcomm-plain+json"
+
     # Encrypt/pack the message to our target
     packy = await dmp.pack(
         message=message,
