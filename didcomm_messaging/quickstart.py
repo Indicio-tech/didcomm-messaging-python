@@ -213,7 +213,10 @@ async def send_http_message(
 
             # Raise an exception if the destination did not return success
             if resp.status != 200:
-                raise Exception("Destination responded with error: %s" % packed)
+                raise Exception(
+                    "Destination responded with error: code=%s message=%s"
+                    % (resp.status, packed)
+                )
 
             # If the HTTP enpoint responded with a message, decode it
             if len(packed) > 0:
