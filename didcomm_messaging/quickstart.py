@@ -192,8 +192,8 @@ async def send_http_message(
         message["typ"] = "application/didcomm-plain+json"
 
     # Ensure that a return-route is on the message
-    if "return-route" not in message or not message["return-route"]:
-        message["return-route"] = "all"
+    if "return_route" not in message or not message["return_route"]:
+        message["return_route"] = "all"
 
     # Encrypt/pack the message to our target
     packy = await dmp.pack(
