@@ -15,7 +15,9 @@ class SupportedCodecs(Enum):
     """Enumeration of supported multicodecs."""
 
     ed25519_pub = Multicodec("ed25519-pub", b"\xed\x01")
+    ed25519_priv = Multicodec("ed25519-priv", b"\x80\x26")
     x25519_pub = Multicodec("x25519-pub", b"\xec\x01")
+    x25519_priv = Multicodec("x25519-priv", b"\x82\x26")
     bls12381g1 = Multicodec("bls12_381-g1-pub", b"\xea\x01")
     bls12381g2 = Multicodec("bls12_381-g2-pub", b"\xeb\x01")
     bls12381g1g2 = Multicodec("bls12_381-g1g2-pub", b"\xee\x01")
@@ -40,7 +42,9 @@ class SupportedCodecs(Enum):
 
 MulticodecStr = Literal[
     "ed25519-pub",
+    "ed25519-priv",
     "x25519-pub",
+    "x25519-priv",
     "bls12_381-g1-pub",
     "bls12_381-g2-pub",
     "bls12_381-g1g2-pub",
