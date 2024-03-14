@@ -28,6 +28,8 @@ class RoutingService:
         services = []
         if did_doc.service:  # service is not guaranteed to exist
             for did_service in did_doc.service:
+                if did_service.type != "DIDCommMessaging":
+                    continue
                 if "didcomm/v2" in did_service.service_endpoint.accept:
                     services.append(did_service)
         if not services:
