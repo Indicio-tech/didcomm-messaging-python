@@ -35,40 +35,6 @@ JSON_VALUE = Union[None, str, int, bool, float, JSON_OBJ, List[Any]]
 LOG = logging.getLogger(__name__)
 
 
-class CompatibilityPrefixResolver(PrefixResolver):
-    """Provide backwards compatibility with older DID methods.
-
-    This will be removed in the future, as the intent is for agents to follow
-    the did:peer:2 spec. The CompatibilityPrefixResolver allows for interaction
-    with agents that are using the old #key-byte-prefix. Once this changes,
-    this class will be removed.
-
-    If you don't need this, it is recommended that you just use the
-    PrefixResolver directly.
-    """
-
-    async def resolve_and_parse(self, did: str) -> DIDDocument:
-        """Resolve a DID and parse the DID document."""
-        doc = await self.resolve(did)
-        # return DIDDocument.deserialize(doc)
-        id_map = {}
-
-        def set_id(method):
-            new_id = method["publicKeyMultibase"][1:9]
-            id_map[method["id"]] = new_id
-            method["id"] = did + "#" + new_id
-            return method
-
-        doc["verificationMethod"] = [
-            set_id(method) for method in doc["verificationMethod"]
-        ]
-        doc["authentication"] = [
-            did + "#" + id_map.get(id) for id in doc["authentication"]
-        ]
-        doc["keyAgreement"] = [did + "#" + id_map.get(id) for id in doc["keyAgreement"]]
-        return DIDDocument.deserialize(doc)
-
-
 def generate_did() -> Tuple[DID, Tuple[Key, Key]]:
     """Use Askar to generate encryption/verification keys, then return a DID from both."""
 
@@ -103,7 +69,7 @@ def generate_did() -> Tuple[DID, Tuple[Key, Key]]:
 
 
 async def setup_default(
-    did: DID, did_secrets: Tuple[Key, Key], enable_compatibility_prefix: bool = False
+    did: DID, did_secrets: Tuple[Key, Key]
 ) -> DIDCommMessaging:
     """Setup a pre-configured DIDCommMessaging instance."""
 
@@ -125,12 +91,7 @@ async def setup_default(
     #
     # At present, the PrefixResolver is used to determine which library should
     # be used to convert a DID into a DIDDocument.
-    if enable_compatibility_prefix:
-        resolver = CompatibilityPrefixResolver(
-            {"did:peer:2": Peer2(), "did:peer:4": Peer4()}
-        )
-    else:
-        resolver = PrefixResolver({"did:peer:2": Peer2(), "did:peer:4": Peer4()})
+    resolver = PrefixResolver({"did:peer:2": Peer2(), "did:peer:4": Peer4()})
 
     # The Packaging Service is where a lot of the magic happens. Similar to a
     # shipping box, the PackagingService will "pack" and "unpack" an encrypted
@@ -155,13 +116,6 @@ async def setup_default(
     verkey, xkey = did_secrets
     await secrets.add_secret(AskarSecretKey(verkey, f"{did}#key-1"))
     await secrets.add_secret(AskarSecretKey(xkey, f"{did}#key-2"))
-
-    # These can be removed once all keys being sent/received are in #key-N
-    # format. They basically do the same as above, except with the same public
-    # keys that are returned from the CompatibilityPrefixResolver.
-    doc = await resolver.resolve_and_parse(did)
-    await secrets.add_secret(AskarSecretKey(verkey, doc.authentication[0]))
-    await secrets.add_secret(AskarSecretKey(xkey, doc.key_agreement[0]))
 
     # Finally, we put it all together in the DIDCommMessaging class. The
     # DIDCommMessaging handles the orchestration of each individual service,
