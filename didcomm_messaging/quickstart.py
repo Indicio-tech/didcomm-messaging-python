@@ -16,7 +16,6 @@ import uuid
 
 from did_peer_2 import KeySpec, generate
 from pydid.did import DID
-from pydid import DIDDocument
 
 from aries_askar import Key, KeyAlg
 from didcomm_messaging import DIDCommMessaging
@@ -68,9 +67,7 @@ def generate_did() -> Tuple[DID, Tuple[Key, Key]]:
     return did, (verkey, xkey)
 
 
-async def setup_default(
-    did: DID, did_secrets: Tuple[Key, Key]
-) -> DIDCommMessaging:
+async def setup_default(did: DID, did_secrets: Tuple[Key, Key]) -> DIDCommMessaging:
     """Setup a pre-configured DIDCommMessaging instance."""
 
     # The Crypto Service is used to encrypt, decrypt, sign and verify messages.
