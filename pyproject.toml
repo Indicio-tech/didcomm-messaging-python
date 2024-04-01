@@ -1,6 +1,6 @@
 [project]
 name = "didcomm-messaging"
-version = "0.1.0a4"
+version = "0.1.0"
 description = "DIDComm Messaging implemented with swappable backends."
 authors = [
     {name = "Daniel Bluhm", email = "dbluhm@pm.me"},
