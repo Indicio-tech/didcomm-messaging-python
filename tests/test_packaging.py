@@ -4,11 +4,12 @@ import pytest
 from aries_askar import Key, KeyAlg
 from didcomm_messaging.crypto.backend.askar import AskarCryptoService, AskarSecretKey
 from didcomm_messaging.crypto.backend.basic import InMemorySecretsManager
+from didcomm_messaging.crypto.base import CryptoService
 from didcomm_messaging.packaging import PackagingService
 from didcomm_messaging.multiformats import multibase
 from didcomm_messaging.multiformats import multicodec
 from didcomm_messaging.resolver.peer import Peer2, Peer4
-from didcomm_messaging.resolver import PrefixResolver
+from didcomm_messaging.resolver import DIDResolver, PrefixResolver
 from did_peer_2 import KeySpec, generate
 
 
@@ -25,17 +26,22 @@ def crypto():
 
 
 @pytest.fixture
-def packaging(secrets, crypto):
+def resolver():
+    yield PrefixResolver({"did:peer:2": Peer2(), "did:peer:4": Peer4()})
+
+
+@pytest.fixture
+def packaging():
     """Fixture for packaging."""
-    yield PackagingService(
-        PrefixResolver({"did:peer:2": Peer2(), "did:peer:4": Peer4()}), crypto, secrets
-    )
+    yield PackagingService()
 
 
 # TODO More thorough tests
 @pytest.mark.asyncio
 async def test_packer_basic(
+    crypto: CryptoService,
     secrets: InMemorySecretsManager,
+    resolver: DIDResolver,
     packaging: PackagingService,
 ):
     """Test basic packaging.
@@ -63,6 +69,6 @@ async def test_packer_basic(
     await secrets.add_secret(AskarSecretKey(verkey, f"{did}#key-1"))
     await secrets.add_secret(AskarSecretKey(xkey, f"{did}#key-2"))
     message = b"hello world"
-    packed = await packaging.pack(message, [did], did)
-    unpacked, meta = await packaging.unpack(packed)
+    packed = await packaging.pack(crypto, resolver, secrets, message, [did], did)
+    unpacked, meta = await packaging.unpack(crypto, resolver, secrets, packed)
     assert unpacked == message
