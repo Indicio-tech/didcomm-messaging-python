@@ -5,6 +5,7 @@ import uuid
 
 from typing import Tuple, List, Dict, Any
 from pydid.service import DIDCommV2Service
+from didcomm_messaging.crypto.base import P, S, CryptoService, SecretsManager
 from didcomm_messaging.packaging import PackagingService
 from didcomm_messaging.resolver import DIDResolver
 
@@ -16,15 +17,12 @@ class RoutingServiceError(Exception):
 class RoutingService:
     """RoutingService."""
 
-    def __init__(self, packaging: PackagingService, resolver: DIDResolver):
-        """Initialize the RoutingService."""
-        self.packaging = packaging
-        self.resolver = resolver
-
-    async def _resolve_services(self, to: str) -> List[DIDCommV2Service]:
-        if not await self.resolver.is_resolvable(to):
+    async def _resolve_services(
+        self, resolver: DIDResolver, to: str
+    ) -> List[DIDCommV2Service]:
+        if not await resolver.is_resolvable(to):
             return []
-        did_doc = await self.resolver.resolve_and_parse(to)
+        did_doc = await resolver.resolve_and_parse(to)
         services = []
         if did_doc.service:  # service is not guaranteed to exist
             for did_service in did_doc.service:
@@ -36,14 +34,16 @@ class RoutingService:
             return []
         return services
 
-    async def is_forwardable_service(self, service: DIDCommV2Service) -> bool:
+    async def is_forwardable_service(
+        self, resolver: DIDResolver, service: DIDCommV2Service
+    ) -> bool:
         """Determine if the uri of a service is a service we should forward to."""
         endpoint = service.service_endpoint.uri
-        found_forwardable_service = await self.resolver.is_resolvable(endpoint)
+        found_forwardable_service = await resolver.is_resolvable(endpoint)
         return found_forwardable_service
 
     def _create_forward_message(
-        self, to: str, next_target: str, message: str
+        self, to: str, next_target: str, message: bytes
     ) -> Dict[Any, Any]:
         return {
             "typ": "application/didcomm-plain+json",
@@ -64,11 +64,21 @@ class RoutingService:
         }
 
     async def prepare_forward(
-        self, to: str, encoded_message: bytes
+        self,
+        crypto: CryptoService[P, S],
+        packaging: PackagingService,
+        resolver: DIDResolver,
+        secrets: SecretsManager[S],
+        to: str,
+        encoded_message: bytes,
     ) -> Tuple[bytes, DIDCommV2Service]:
         """Prepare a forward message, if necessary.
 
         Args:
+            crypto (CryptoService[P, S]): Crypto service
+            packaging (PackagingService): Packaging service
+            resolver (DIDResolver): Resolver instance
+            secrets (SecretsManager[S]): Secrets manager
             to (str): The recipient of the message. This will be a DID.
             encoded_message (bytes): The encoded message.
 
@@ -77,7 +87,7 @@ class RoutingService:
         """
 
         # Get the initial service
-        services = await self._resolve_services(to)
+        services = await self._resolve_services(resolver, to)
         chain = [
             {
                 "did": to,
@@ -87,9 +97,11 @@ class RoutingService:
 
         # Loop through service DIDs until we run out of DIDs to forward to
         to_did = services[0].service_endpoint.uri
-        found_forwardable_service = await self.is_forwardable_service(services[0])
+        found_forwardable_service = await self.is_forwardable_service(
+            resolver, services[0]
+        )
         while found_forwardable_service:
-            services = await self._resolve_services(to_did)
+            services = await self._resolve_services(resolver, to_did)
             if services:
                 chain.append(
                     {
@@ -99,7 +111,9 @@ class RoutingService:
                 )
                 to_did = services[0].service_endpoint.uri
             found_forwardable_service = (
-                await self.is_forwardable_service(services[0]) if services else False
+                await self.is_forwardable_service(resolver, services[0])
+                if services
+                else False
             )
 
         if not chain[-1]["service"]:
@@ -127,10 +141,13 @@ class RoutingService:
             # Pack for each key
             while routing_keys:
                 key = routing_keys.pop()  # pop from end of list (reverse order)
-                packed_message = await self.packaging.pack(
+                packed_message = await packaging.pack(
+                    crypto,
+                    resolver,
+                    secrets,
                     json.dumps(
                         self._create_forward_message(key, next_target, packed_message)
-                    ),
+                    ).encode(),
                     [key],
                 )
                 next_target = key
