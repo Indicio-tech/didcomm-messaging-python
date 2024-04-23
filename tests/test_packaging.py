@@ -1,4 +1,5 @@
 """Test PackagingService."""
+
 import pytest
 
 from aries_askar import Key, KeyAlg

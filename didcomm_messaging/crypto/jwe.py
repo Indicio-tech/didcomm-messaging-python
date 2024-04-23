@@ -256,9 +256,7 @@ class JweEnvelope:
         try:
             protected: dict = json.loads(from_b64url(protected_b64))
         except json.JSONDecodeError:
-            raise ValueError(
-                "Invalid JWE: invalid JSON for protected headers"
-            ) from None
+            raise ValueError("Invalid JWE: invalid JSON for protected headers") from None
         unprotected = parsed.get("unprotected") or {}
         if protected.keys() & unprotected.keys():
             raise ValueError("Invalid JWE: duplicate header")

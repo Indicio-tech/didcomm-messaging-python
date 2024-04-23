@@ -1,4 +1,5 @@
 """DIDComm Messaging."""
+
 from dataclasses import dataclass
 import json
 from typing import Generic, Optional, List

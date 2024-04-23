@@ -1,4 +1,5 @@
 """Quickstart helpers for beginner users of DIDComm."""
+
 from typing import (
     Optional,
     Dict,

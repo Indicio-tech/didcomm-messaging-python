@@ -1,6 +1,5 @@
 """CryptoService and SecretsManager interfaces for DIDComm Messaging."""
 
-
 from abc import ABC, abstractmethod
 from typing import Generic, Mapping, Optional, Sequence, TypeVar, Union
 

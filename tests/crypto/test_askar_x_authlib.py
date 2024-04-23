@@ -1,4 +1,5 @@
 """Test compabibility between Askar and Authlib."""
+
 import json
 from aries_askar import Key, KeyAlg
 from authlib.jose import OKPKey
@@ -42,8 +43,9 @@ def bob_authlib_key(bob_askar_key: Key):
 
 @pytest.fixture
 def alice(alice_askar_key: Key, alice_authlib_key: OKPKey):
-    yield AskarSecretKey(alice_askar_key, ALICE_KID), AuthlibKey(
-        alice_authlib_key, ALICE_KID
+    yield (
+        AskarSecretKey(alice_askar_key, ALICE_KID),
+        AuthlibKey(alice_authlib_key, ALICE_KID),
     )
 
 
