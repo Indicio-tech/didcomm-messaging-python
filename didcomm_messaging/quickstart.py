@@ -341,3 +341,126 @@ async def fetch_relayed_messages(
         "to": [relay_did],
     }
     await send_http_message(dmp, my_did, message, target=relay_did)
+
+
+# '##:::::'##:'########:'########:::'######:::'#######:::'######::'##:::'##:
+#  ##:'##: ##: ##.....:: ##.... ##:'##... ##:'##.... ##:'##... ##: ##::'##::
+#  ##: ##: ##: ##::::::: ##:::: ##: ##:::..:: ##:::: ##: ##:::..:: ##:'##:::
+#  ##: ##: ##: ######::: ########::. ######:: ##:::: ##: ##::::::: #####::::
+#  ##: ##: ##: ##...:::: ##.... ##::..... ##: ##:::: ##: ##::::::: ##. ##:::
+#  ##: ##: ##: ##::::::: ##:::: ##:'##::: ##: ##:::: ##: ##::: ##: ##:. ##::
+# . ###. ###:: ########: ########::. ######::. #######::. ######:: ##::. ##:
+# :...::...:::........::........::::......::::.......::::......:::..::::..::
+
+# The following functions are used for establishing a persistant WebSocket
+# connection with a mediator/relay. This allows messages to be delivered as
+# soon as they arrive instead of waiting to be picked up with the pickup
+# protocol.
+
+# TODO add comments to the below code segments and tidy it up
+
+try:
+    import websockets
+    import asyncio
+except ImportError:
+    import warnings
+
+    warnings.warn(
+        "Missing websockets or asyncio import, live-delivery will be unavailable",
+        ImportWarning,
+    )
+
+
+async def handle_websocket(
+    dmp: DIDCommMessaging,
+    relay_did: DID,
+    mediator_websocket: Awaitable["websockets.WebSocketClientProtocol"],
+    live_delivery_message: bytes,
+    callback: Callable[[Dict[str, Any]], Awaitable[None]] = _message_callback,
+):
+    """Loop over messages received and process them."""
+    async with mediator_websocket as websocket:
+        await websocket.send(live_delivery_message)
+        LOG.debug("Connected to WebSocket and requested Live Delivery!")
+        while True:
+            message = await websocket.recv()
+            LOG.debug("Received message over websocket")
+
+            try:
+                unpacked_message, metadata = await dmp.packaging.unpack(message)
+                msg = unpacked_message.decode()
+                msg = json.loads(msg)
+                LOG.debug("Received websocket message %s", msg["type"])
+                if msg["from"] != relay_did:
+                    await callback(msg)
+
+            except Exception as err:
+                LOG.error("Error encountered while decrypting websocket message")
+                LOG.exception(err)
+
+        await websocket.close()
+
+
+async def activate_websocket(
+    dmp: DIDCommMessaging,
+    my_did: DID,
+    relay_did: DID,
+    callback: Callable[[Dict[str, Any]], Awaitable[None]] = _message_callback,
+    create_task: bool = False,
+) -> Union[Awaitable[None], "asyncio.Task"]:
+    """Connect to a websocket and request message forwarding."""
+
+    message = {
+        "type": "https://didcomm.org/messagepickup/3.0/live-delivery-change",
+        "id": str(uuid.uuid4()),
+        "body": {
+            "live_delivery": True,
+        },
+        "from": my_did,
+        "to": [relay_did],
+    }
+    packed = await dmp.pack(
+        message=message,
+        to=relay_did,
+        frm=my_did,
+    )
+    endpoint = packed.get_endpoint("ws")
+    LOG.info("Relay Websocket Address: %s", endpoint)
+    if endpoint:
+        LOG.info("Found Relay websocket, connecting")
+        mediator_websocket = websockets.connect(uri=endpoint)
+        websocket_handler = handle_websocket(
+            dmp,
+            relay_did,
+            mediator_websocket,
+            packed.message,
+            callback,
+        )
+        if create_task:
+            return asyncio.create_task(websocket_handler)
+        else:
+            return websocket_handler
+
+
+async def websocket_loop(
+    dmp: DIDCommMessaging,
+    my_did: DID,
+    relay_did: DID,
+    callback: Callable[[Dict[str, Any]], Awaitable[None]] = _message_callback,
+) -> None:
+    """Run the websocket handler in a task and reconnect on failure."""
+
+    async def create_task():
+        return await activate_websocket(dmp, my_did, relay_did, callback, True)
+
+    mediator_websocket_proc = await create_task()
+
+    while True:
+        await asyncio.sleep(5)
+        if mediator_websocket_proc.done():
+            LOG.exception(mediator_websocket_proc.exception())
+            try:
+                LOG.error("Websocket died, re-establishing connection!")
+            except Exception:
+                pass
+            mediator_websocket_proc = await create_task()
