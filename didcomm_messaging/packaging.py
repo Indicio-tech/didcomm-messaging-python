@@ -1,6 +1,5 @@
 """PackagingService interface."""
 
-
 from dataclasses import dataclass
 import hashlib
 from typing import Generic, Literal, Optional, Sequence, Tuple, Union
@@ -179,9 +178,7 @@ class PackagingService(Generic[P, S]):
             await self.recip_for_kid_or_default_for_did(crypto, resolver, kid)
             for kid in to
         ]
-        sender_kid = (
-            await self.default_sender_kid_for_did(resolver, frm) if frm else None
-        )
+        sender_kid = await self.default_sender_kid_for_did(resolver, frm) if frm else None
         sender_key = await secrets.get_secret_by_kid(sender_kid) if sender_kid else None
         if frm and not sender_key:
             raise PackagingServiceError("No sender key found")

@@ -1,4 +1,5 @@
 """Askar backend for DIDComm Messaging."""
+
 from collections import OrderedDict
 import hashlib
 import json
@@ -133,9 +134,7 @@ class AskarSecretKey(SecretKey):
 class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
     """CryptoService backend implemented using Askar."""
 
-    async def ecdh_es_encrypt(
-        self, to_keys: Sequence[AskarKey], message: bytes
-    ) -> bytes:
+    async def ecdh_es_encrypt(self, to_keys: Sequence[AskarKey], message: bytes) -> bytes:
         """Encode a message into DIDComm v2 anonymous encryption."""
         builder = JweBuilder(with_flatten_recipients=False)
 
@@ -225,9 +224,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
             "A256CBC-HS512",
             "XC20P",
         ):
-            raise CryptoServiceError(
-                f"Unsupported ECDH-ES content encryption: {enc_alg}"
-            )
+            raise CryptoServiceError(f"Unsupported ECDH-ES content encryption: {enc_alg}")
 
         epk_header = recip.header.get("epk")
         if not epk_header:
@@ -239,9 +236,7 @@ class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
             raise CryptoServiceError("Error loading ephemeral key")
 
         try:
-            cek = ecdh.EcdhEs(
-                alg_id, None, wrapper.apv_bytes
-            ).receiver_unwrap_key(  # type: ignore
+            cek = ecdh.EcdhEs(alg_id, None, wrapper.apv_bytes).receiver_unwrap_key(  # type: ignore
                 wrap_alg,
                 enc_alg,
                 epk,
