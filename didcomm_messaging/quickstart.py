@@ -330,13 +330,13 @@ async def fetch_relayed_messages(
         if callback:
             await callback(msg)
 
-        message = {
-            "type": "https://didcomm.org/messagepickup/3.0/messages-received",
-            "id": str(uuid.uuid4()),
-            "body": {
-                "message_id_list": [msg["id"] for msg in message["attachments"]],
-            },
-            "frm": my_did,
-            "to": [relay_did],
-        }
-        await send_http_message(dmp, my_did, message, target=relay_did)
+    message = {
+        "type": "https://didcomm.org/messagepickup/3.0/messages-received",
+        "id": str(uuid.uuid4()),
+        "body": {
+            "message_id_list": [msg["id"] for msg in message["attachments"]],
+        },
+        "from": my_did,
+        "to": [relay_did],
+    }
+    await send_http_message(dmp, my_did, message, target=relay_did)
