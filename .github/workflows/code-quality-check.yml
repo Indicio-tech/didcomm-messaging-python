@@ -14,5 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: psf/black@23.11.0
       - uses: chartboost/ruff-action@v1
+        with:
+          version: "0.4.1"
+          args: 'format --check'
+      - uses: chartboost/ruff-action@v1
+        with:
+          version: "0.4.1"
