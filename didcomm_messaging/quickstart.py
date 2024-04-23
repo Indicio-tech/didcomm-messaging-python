@@ -200,7 +200,7 @@ async def setup_relay(
         "type": "https://didcomm.org/coordinate-mediation/3.0/mediate-request",
         "id": str(uuid.uuid4()),
         "body": {},
-        "frm": my_did,
+        "from": my_did,
         "to": [relay_did],
     }
     message = await send_http_message(dmp, my_did, message, target=relay_did)
@@ -270,7 +270,7 @@ async def setup_relay(
                 },
             ],
         },
-        "frm": my_did,
+        "from": my_did,
         "to": [relay_did],
     }
     message = await send_http_message(dmp, my_did, message, target=relay_did)
@@ -297,7 +297,7 @@ async def fetch_relayed_messages(
         "type": "https://didcomm.org/messagepickup/3.0/status-request",
         "id": str(uuid.uuid4()),
         "body": {},
-        "frm": my_did,
+        "from": my_did,
         "to": [relay_did],
     }
     message = await send_http_message(dmp, my_did, message, target=relay_did)
@@ -314,7 +314,7 @@ async def fetch_relayed_messages(
         "body": {
             "limit": message["body"]["message_count"],
         },
-        "frm": my_did,
+        "from": my_did,
         "to": [relay_did],
     }
     message = await send_http_message(dmp, my_did, message, target=relay_did)
