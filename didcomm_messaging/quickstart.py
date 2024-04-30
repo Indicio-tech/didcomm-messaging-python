@@ -25,6 +25,7 @@ from didcomm_messaging.crypto.backend.basic import InMemorySecretsManager
 from didcomm_messaging.multiformats import multibase, multicodec
 from didcomm_messaging.packaging import PackagingService
 from didcomm_messaging.resolver import PrefixResolver
+from didcomm_messaging.resolver.web import DIDWeb
 from didcomm_messaging.resolver.peer import Peer2, Peer4
 from didcomm_messaging.routing import RoutingService
 
@@ -89,7 +90,11 @@ async def setup_default(did: DID, did_secrets: Tuple[Key, Key]) -> DIDCommMessag
     #
     # At present, the PrefixResolver is used to determine which library should
     # be used to convert a DID into a DIDDocument.
-    resolver = PrefixResolver({"did:peer:2": Peer2(), "did:peer:4": Peer4()})
+    resolver = PrefixResolver({
+        "did:peer:2": Peer2(),
+        "did:peer:4": Peer4(),
+        "did:web:": DIDWeb(),
+    })
 
     # The Packaging Service is where a lot of the magic happens. Similar to a
     # shipping box, the PackagingService will "pack" and "unpack" an encrypted
@@ -97,14 +102,14 @@ async def setup_default(did: DID, did_secrets: Tuple[Key, Key]) -> DIDCommMessag
     # message to a single target, however. If the message needs to be forwarded
     # (because the recipient is behind a relay), then those messages will need
     # to be handled by the RoutingService.
-    packer = PackagingService(resolver, crypto, secrets)
+    packer = PackagingService()
 
     # The RoutingService handles the routing of messages through relays. When a
     # message needs to be forwarded, the RoutingService will handle wrapping
     # each encrypted message within a forward message. The built-in
     # RoutingService allows for multiple levels of relays, so you don't need to
     # worry about how a message is routed to the recipient.
-    router = RoutingService(packaging=packer, resolver=resolver)
+    router = RoutingService()
 
     # Once everything is setup, we need to store the DID Secrets within the
     # SecretsService. We do this by taking the secrets that were passed in,
@@ -180,10 +185,10 @@ async def send_http_message(
 
             # If the HTTP enpoint responded with a message, decode it
             if len(packed) > 0:
-                unpacked = await dmp.packaging.unpack(packed)
-                msg = unpacked[0].decode()
+                unpacked = await dmp.unpack(packed)
+                msg = unpacked.message
                 LOG.debug("Raw message from remote %s", msg)
-                return json.loads(msg)
+                return msg
     return
 
 
@@ -396,9 +401,8 @@ async def handle_websocket(
             try:
                 # Unpack/Decrypt the message, decode it, and load the JSON into
                 # a native python object.
-                unpacked_message, metadata = await dmp.packaging.unpack(message)
-                msg = unpacked_message.decode()
-                msg = json.loads(msg)
+                unpacked_message = await dmp.unpack(message)
+                msg = unpacked_message.message
                 LOG.debug("Received websocket message %s", msg["type"])
 
                 # If the message is not from the relay, process it via the callback
