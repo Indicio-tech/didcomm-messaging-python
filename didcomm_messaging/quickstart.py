@@ -90,11 +90,13 @@ async def setup_default(did: DID, did_secrets: Tuple[Key, Key]) -> DIDCommMessag
     #
     # At present, the PrefixResolver is used to determine which library should
     # be used to convert a DID into a DIDDocument.
-    resolver = PrefixResolver({
-        "did:peer:2": Peer2(),
-        "did:peer:4": Peer4(),
-        "did:web:": DIDWeb(),
-    })
+    resolver = PrefixResolver(
+        {
+            "did:peer:2": Peer2(),
+            "did:peer:4": Peer4(),
+            "did:web:": DIDWeb(),
+        }
+    )
 
     # The Packaging Service is where a lot of the magic happens. Similar to a
     # shipping box, the PackagingService will "pack" and "unpack" an encrypted
