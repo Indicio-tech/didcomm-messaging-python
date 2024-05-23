@@ -1,7 +1,6 @@
 """DIDComm v1 packing and unpacking."""
 
 from collections import OrderedDict
-from functools import lru_cache
 from typing import Iterable, Optional, Sequence, Dict, Union, Tuple, cast
 import json
 import struct
@@ -39,7 +38,6 @@ def bytes_to_b64(val: bytes) -> str:
     return b64url.encode(val)
 
 
-@lru_cache(maxsize=16)
 def b58_to_bytes(val: str) -> bytes:
     """Convert a base 58 string to bytes.
 
@@ -49,7 +47,6 @@ def b58_to_bytes(val: str) -> bytes:
     return base58.b58decode(val)
 
 
-@lru_cache(maxsize=16)
 def bytes_to_b58(val: bytes) -> str:
     """Convert a byte string to base 58.
 
