@@ -1,4 +1,8 @@
-"""DIDComm v1 packing and unpacking."""
+"""DIDComm v1 packing and unpacking.
+
+This implementation is kept around for backwards compatibility. It is
+likely that you should use the LegacyCryptoService interfaces instead.
+"""
 
 from collections import OrderedDict
 from typing import Iterable, Optional, Sequence, Dict, Union, Tuple, cast

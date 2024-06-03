@@ -1,34 +1,7 @@
 """Test Pack and Unpack."""
 
-from typing import NamedTuple
-
-import base58
-import pytest
-
 from didcomm_messaging.legacy import crypto
-
-
-class KeyPair(NamedTuple):
-    """Keys."""
-
-    verkey: bytes
-    sigkey: bytes
-
-    @property
-    def verkey_b58(self) -> str:
-        return base58.b58encode(self.verkey).decode()
-
-
-@pytest.fixture(scope="module")
-def alice():
-    """Generate alice's keys."""
-    yield KeyPair(*crypto.create_keypair())
-
-
-@pytest.fixture(scope="module")
-def bob():
-    """Generate bob's keys."""
-    yield KeyPair(*crypto.create_keypair())
+from didcomm_messaging.legacy.nacl import KeyPair
 
 
 def test_pack_unpack_auth(alice: KeyPair, bob: KeyPair):
