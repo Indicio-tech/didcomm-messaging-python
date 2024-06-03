@@ -5,7 +5,7 @@
 groups = ["default", "askar", "authlib", "dev", "did_peer", "legacy"]
 strategy = ["cross_platform"]
 lock_version = "4.4.1"
-content_hash = "sha256:369b72c46dc8a8361ed81af8d10c22da9e84fd691a0063e8c535756cf521accd"
+content_hash = "sha256:3af0e05c6cbbffb18bcb20959ea1d019ca294cd70f3fbd03cf0e4f19211817cb"
 
 [[package]]
 name = "annotated-types"
