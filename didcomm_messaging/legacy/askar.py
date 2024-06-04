@@ -4,6 +4,7 @@ from collections import OrderedDict
 from typing import Optional, Sequence, Tuple, cast
 
 from base58 import b58decode
+from pydid import VerificationMethod
 
 from didcomm_messaging.crypto.jwe import JweBuilder, JweEnvelope, JweRecipient
 from didcomm_messaging.legacy.base import (
@@ -29,6 +30,11 @@ class AskarLegacyCryptoService(LegacyCryptoService[AskarKey, AskarSecretKey]):
         In DIDComm v1, kids are the base58 encoded keys.
         """
         return AskarKey(Key.from_public_bytes(KeyAlg.ED25519, b58decode(kid)), kid)
+
+    @classmethod
+    def verification_method_to_public_key(cls, vm: VerificationMethod) -> AskarKey:
+        """Convert a verification method to a public key."""
+        return AskarKey.from_verification_method(vm)
 
     async def pack_message(
         self,

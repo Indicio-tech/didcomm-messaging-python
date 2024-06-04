@@ -2,6 +2,8 @@
 
 from abc import ABC, abstractmethod
 from typing import Generic, NamedTuple, Optional, Sequence
+
+from pydid import VerificationMethod
 from didcomm_messaging.crypto.base import P, S
 from didcomm_messaging.crypto.jwe import JweEnvelope
 from didcomm_messaging.multiformats.multibase import Base64UrlEncoder
@@ -35,6 +37,11 @@ class LegacyCryptoService(ABC, Generic[P, S]):
 
         In DIDComm v1, kids are the base58 encoded keys.
         """
+
+    @classmethod
+    @abstractmethod
+    def verification_method_to_public_key(cls, vm: VerificationMethod) -> P:
+        """Convert a verification method to a public key."""
 
     @abstractmethod
     async def pack_message(
