@@ -1,14 +1,14 @@
-"""Legacy DIDComm v1 Crypto implementation."""
+"""LegacyCryptoService implementation for askar."""
 
 from collections import OrderedDict
 from typing import Optional, Sequence, Tuple, cast
 
-from base58 import b58decode, b58encode
+from base58 import b58decode
 
 from didcomm_messaging.crypto.jwe import JweBuilder, JweEnvelope, JweRecipient
 from didcomm_messaging.legacy.base import (
-    LegacyUnpackResult,
     LegacyCryptoService,
+    LegacyUnpackResult,
     RecipData,
 )
 
@@ -44,11 +44,7 @@ class AskarLegacyCryptoService(LegacyCryptoService[AskarKey, AskarSecretKey]):
         # avoid converting to bytes object: this way the only copy is zeroed afterward
         # tell type checking it's bytes to make it happy
         cek_b = cast(bytes, key_get_secret_bytes(cek._handle))
-        sender_vk = (
-            b58encode(from_key.key.get_public_bytes()).decode("utf-8")
-            if from_key
-            else None
-        )
+        sender_vk = from_key.kid if from_key else None
         sender_xk = from_key.key.convert_key(KeyAlg.X25519) if from_key else None
 
         for target_vk in to_verkeys:

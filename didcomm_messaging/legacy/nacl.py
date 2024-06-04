@@ -1,9 +1,16 @@
 """LegacyCryptoService implementation for pynacl."""
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Sequence
+from typing import Dict, Optional, OrderedDict, Sequence, Tuple
 
 import base58
+from pydid import VerificationMethod
+
+from didcomm_messaging.crypto.base import PublicKey, SecretKey, SecretsManager
+from didcomm_messaging.crypto.jwe import JweBuilder, JweEnvelope, JweRecipient
+from didcomm_messaging.multiformats import multibase, multicodec
+
+from .base import LegacyCryptoService, LegacyUnpackResult, RecipData
 
 try:
     import nacl.bindings
@@ -13,18 +20,6 @@ except ImportError as err:
     raise ImportError(
         "Legacy implementation requires 'legacy' extra to be installed"
     ) from err
-from pydid import VerificationMethod
-
-from didcomm_messaging.crypto.base import (
-    PublicKey,
-    SecretKey,
-    SecretsManager,
-)
-from didcomm_messaging.crypto.jwe import JweEnvelope
-from didcomm_messaging.multiformats import multibase, multicodec
-
-from . import crypto
-from .base import LegacyCryptoService, LegacyUnpackResult, RecipData
 
 
 @dataclass
@@ -92,13 +87,66 @@ class NaclLegacyCryptoService(LegacyCryptoService[EdPublicKey, KeyPair]):
         message: bytes,
     ) -> JweEnvelope:
         """Encode a message using the DIDComm v1 'pack' algorithm."""
-        packed = crypto.pack_message(
-            message=message.decode(),
-            to_verkeys=[vk.value for vk in to_verkeys],
-            from_verkey=from_key.verkey if from_key else None,
-            from_sigkey=from_key.sigkey if from_key else None,
+        builder = JweBuilder(
+            with_protected_recipients=True, with_flatten_recipients=False
         )
-        return JweEnvelope.deserialize(packed)
+        cek = nacl.bindings.crypto_secretstream_xchacha20poly1305_keygen()
+        sender_vk = from_key.verkey_b58.encode() if from_key else None
+        sender_xk = (
+            nacl.bindings.crypto_sign_ed25519_sk_to_curve25519(from_key.sigkey)
+            if from_key
+            else None
+        )
+        for target_vk in to_verkeys:
+            target_xk = nacl.bindings.crypto_sign_ed25519_pk_to_curve25519(
+                target_vk.value
+            )
+            if sender_vk and sender_xk:
+                enc_sender = nacl.bindings.crypto_box_seal(sender_vk, target_xk)
+                nonce = nacl.utils.random(nacl.bindings.crypto_box_NONCEBYTES)
+                enc_cek = nacl.bindings.crypto_box(cek, nonce, target_xk, sender_xk)
+                builder.add_recipient(
+                    JweRecipient(
+                        encrypted_key=enc_cek,
+                        header=OrderedDict(
+                            [
+                                ("kid", target_vk.kid),
+                                ("sender", self.b64url.encode(enc_sender)),
+                                ("iv", self.b64url.encode(nonce)),
+                            ]
+                        ),
+                    )
+                )
+            else:
+                enc_sender = None
+                nonce = None
+                enc_cek = nacl.bindings.crypto_box_seal(cek, target_xk)
+                builder.add_recipient(
+                    JweRecipient(encrypted_key=enc_cek, header={"kid": target_vk.kid})
+                )
+
+        builder.set_protected(
+            OrderedDict(
+                [
+                    ("enc", "xchacha20poly1305_ietf"),
+                    ("typ", "JWM/1.0"),
+                    ("alg", "Authcrypt" if from_key else "Anoncrypt"),
+                ]
+            ),
+        )
+
+        nonce = nacl.utils.random(
+            nacl.bindings.crypto_aead_chacha20poly1305_ietf_NPUBBYTES
+        )
+        output = nacl.bindings.crypto_aead_chacha20poly1305_ietf_encrypt(
+            message, builder.protected_bytes, nonce, cek
+        )
+        mlen = len(message)
+        ciphertext = output[:mlen]
+        tag = output[mlen:]
+        builder.set_payload(ciphertext, nonce, tag)
+
+        return builder.build()
 
     def _extract_payload_key(self, recip_key: KeyPair, recip_data: RecipData):
         """Extract the payload key."""
@@ -110,7 +158,7 @@ class NaclLegacyCryptoService(LegacyCryptoService[EdPublicKey, KeyPair]):
                 recip_data.enc_sender, pk, sk
             ).decode()
             sender_pk = nacl.bindings.crypto_sign_ed25519_pk_to_curve25519(
-                crypto.b58_to_bytes(sender_vk)
+                base58.b58decode(sender_vk)
             )
             cek = nacl.bindings.crypto_box_open(
                 recip_data.enc_cek, recip_data.nonce, sender_pk, sk
@@ -127,10 +175,10 @@ class NaclLegacyCryptoService(LegacyCryptoService[EdPublicKey, KeyPair]):
         cek, sender_vk = self._extract_payload_key(recip_key, recip_data)
 
         payload_bin = wrapper.ciphertext + wrapper.tag
-        message = crypto.decrypt_plaintext(
+        message = nacl.bindings.crypto_aead_chacha20poly1305_ietf_decrypt(
             payload_bin, wrapper.protected_b64, wrapper.iv, cek
         )
-        return LegacyUnpackResult(message.encode(), recip_key.kid, sender_vk)
+        return LegacyUnpackResult(message, recip_key.kid, sender_vk)
 
 
 class InMemSecretsManager(SecretsManager[KeyPair]):
@@ -144,8 +192,21 @@ class InMemSecretsManager(SecretsManager[KeyPair]):
         """Retrieve secret by kid."""
         return self.secrets.get(kid)
 
+    def _create_keypair(self, seed: Optional[bytes] = None) -> Tuple[bytes, bytes]:
+        """Create a keypair."""
+        if seed:
+            if not isinstance(seed, bytes):
+                raise ValueError("Seed value is not a string or bytes")
+            if len(seed) != 32:
+                raise ValueError("Seed value must be 32 bytes in length")
+        else:
+            seed = nacl.utils.random(nacl.bindings.crypto_secretbox_KEYBYTES)
+
+        pk, sk = nacl.bindings.crypto_sign_seed_keypair(seed)
+        return pk, sk
+
     def create(self, seed: Optional[bytes] = None) -> KeyPair:
         """Create and store a new keypair."""
-        keys = KeyPair(*crypto.create_keypair(seed))
+        keys = KeyPair(*self._create_keypair(seed))
         self.secrets[keys.kid] = keys
         return keys
