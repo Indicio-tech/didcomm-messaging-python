@@ -80,6 +80,11 @@ class NaclLegacyCryptoService(LegacyCryptoService[EdPublicKey, KeyPair]):
         """
         return EdPublicKey(base58.b58decode(kid))
 
+    @classmethod
+    def verification_method_to_public_key(cls, vm: VerificationMethod) -> EdPublicKey:
+        """Convert a verification method to a public key."""
+        return EdPublicKey.from_verification_method(vm)
+
     async def pack_message(
         self,
         to_verkeys: Sequence[EdPublicKey],
