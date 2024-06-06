@@ -18,12 +18,16 @@ class RecipData(NamedTuple):
     enc_cek: bytes
 
 
-class V1UnpackResult(NamedTuple):
+class V1CryptoUnpackResult(NamedTuple):
     """Result of unpacking."""
 
-    message: bytes
+    unpacked: bytes
     recip: str
     sender: Optional[str]
+
+
+class V1CryptoServiceError(Exception):
+    """Raised on errors in crypto service."""
 
 
 class V1CryptoService(ABC, Generic[P, S]):
@@ -32,11 +36,15 @@ class V1CryptoService(ABC, Generic[P, S]):
     b64url = Base64UrlEncoder()
 
     @abstractmethod
-    def kid_to_public_key(self, kid: str) -> P:
+    def v1_kid_to_public_key(self, kid: str) -> P:
         """Get a public key from a kid.
 
         In DIDComm v1, kids are the base58 encoded keys.
         """
+
+    @abstractmethod
+    def public_key_to_v1_kid(self, key: P) -> str:
+        """Return the DIDComm v1 kid representation for a key."""
 
     @classmethod
     @abstractmethod
@@ -52,5 +60,5 @@ class V1CryptoService(ABC, Generic[P, S]):
     @abstractmethod
     async def unpack_message(
         self, wrapper: JweEnvelope, recip_key: S, recip_data: RecipData
-    ) -> V1UnpackResult:
+    ) -> V1CryptoUnpackResult:
         """Decode a message using DIDCvomm v1 'unpack' algorithm."""

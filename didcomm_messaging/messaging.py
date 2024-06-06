@@ -41,7 +41,7 @@ class UnpackResult:
     """Result of unpacking a message."""
 
     unpacked: bytes
-    encrytped: bool
+    encrypted: bool
     authenticated: bool
     recipient_kid: str
     sender_kid: Optional[str] = None
@@ -139,7 +139,7 @@ class DIDCommMessagingService(Generic[P, S]):
         )
         return UnpackResult(
             unpacked,
-            encrytped=bool(metadata.method),
+            encrypted=bool(metadata.method),
             authenticated=bool(metadata.sender_kid),
             recipient_kid=metadata.recip_key.kid,
             sender_kid=metadata.sender_kid,

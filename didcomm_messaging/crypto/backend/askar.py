@@ -116,11 +116,6 @@ class AskarKey(PublicKey):
         """Get the key in multibase format."""
         return self._multikey
 
-    @property
-    def key_bytes(self) -> bytes:
-        """Get the bytes of the key."""
-        return self.key.get_public_bytes()
-
 
 class AskarSecretKey(SecretKey):
     """Secret key implementation for Askar."""

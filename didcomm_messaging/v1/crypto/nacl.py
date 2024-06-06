@@ -10,7 +10,7 @@ from didcomm_messaging.crypto.base import PublicKey, SecretKey, SecretsManager
 from didcomm_messaging.crypto.jwe import JweBuilder, JweEnvelope, JweRecipient
 from didcomm_messaging.multiformats import multibase, multicodec
 
-from .base import V1CryptoService, V1UnpackResult, RecipData
+from .base import V1CryptoService, V1CryptoUnpackResult, RecipData
 
 try:
     import nacl.bindings
@@ -60,7 +60,7 @@ class EdPublicKey(PublicKey):
     @property
     def kid(self) -> str:
         """Get the key ID."""
-        return self.key
+        raise NotImplementedError()
 
     @property
     def multikey(self) -> str:
@@ -69,21 +69,20 @@ class EdPublicKey(PublicKey):
             multicodec.wrap("ed25519-pub", base58.b58decode(self.key)), "base58btc"
         )
 
-    @property
-    def key_bytes(self) -> bytes:
-        """Get the bytes of the key."""
-        return self.value
-
 
 class NaclV1CryptoService(V1CryptoService[EdPublicKey, KeyPair]):
     """V1 crypto service using pynacl."""
 
-    def kid_to_public_key(self, kid: str):
+    def v1_kid_to_public_key(self, kid: str):
         """Get a public key from a kid.
 
         In DIDComm v1, kids are the base58 encoded keys.
         """
         return EdPublicKey(base58.b58decode(kid))
+
+    def public_key_to_v1_kid(self, key: EdPublicKey) -> str:
+        """Convert a public key into a v1 kid representation."""
+        return base58.b58encode(key.value).decode()
 
     @classmethod
     def verification_method_to_public_key(cls, vm: VerificationMethod) -> EdPublicKey:
@@ -120,7 +119,7 @@ class NaclV1CryptoService(V1CryptoService[EdPublicKey, KeyPair]):
                         encrypted_key=enc_cek,
                         header=OrderedDict(
                             [
-                                ("kid", target_vk.kid),
+                                ("kid", self.public_key_to_v1_kid(target_vk)),
                                 ("sender", self.b64url.encode(enc_sender)),
                                 ("iv", self.b64url.encode(nonce)),
                             ]
@@ -128,11 +127,12 @@ class NaclV1CryptoService(V1CryptoService[EdPublicKey, KeyPair]):
                     )
                 )
             else:
-                enc_sender = None
-                nonce = None
                 enc_cek = nacl.bindings.crypto_box_seal(cek, target_xk)
                 builder.add_recipient(
-                    JweRecipient(encrypted_key=enc_cek, header={"kid": target_vk.kid})
+                    JweRecipient(
+                        encrypted_key=enc_cek,
+                        header={"kid": self.public_key_to_v1_kid(target_vk)},
+                    )
                 )
 
         builder.set_protected(
@@ -180,7 +180,7 @@ class NaclV1CryptoService(V1CryptoService[EdPublicKey, KeyPair]):
 
     async def unpack_message(
         self, wrapper: JweEnvelope, recip_key: KeyPair, recip_data: RecipData
-    ) -> V1UnpackResult:
+    ) -> V1CryptoUnpackResult:
         """Decode a message using DIDCvomm v1 'unpack' algorithm."""
         cek, sender_vk = self._extract_payload_key(recip_key, recip_data)
 
@@ -188,7 +188,7 @@ class NaclV1CryptoService(V1CryptoService[EdPublicKey, KeyPair]):
         message = nacl.bindings.crypto_aead_chacha20poly1305_ietf_decrypt(
             payload_bin, wrapper.protected_b64, wrapper.iv, cek
         )
-        return V1UnpackResult(message, recip_key.kid, sender_vk)
+        return V1CryptoUnpackResult(message, recip_key.kid, sender_vk)
 
 
 class InMemSecretsManager(SecretsManager[KeyPair]):
@@ -206,7 +206,7 @@ class InMemSecretsManager(SecretsManager[KeyPair]):
         """Create a keypair."""
         if seed:
             if not isinstance(seed, bytes):
-                raise ValueError("Seed value is not a string or bytes")
+                raise ValueError("Seed value is not bytes")
             if len(seed) != 32:
                 raise ValueError("Seed value must be 32 bytes in length")
         else:

@@ -8,11 +8,10 @@ import pytest_asyncio
 from didcomm_messaging.crypto.backend.askar import AskarKey, AskarSecretsManager
 from didcomm_messaging.resolver import DIDResolver
 from didcomm_messaging.resolver.peer import Peer4
-from didcomm_messaging.v1.crypto.askar import AskarSecretKey, AskarV1CryptoService
+from didcomm_messaging.v1.crypto.askar import AskarV1CryptoService
 from didcomm_messaging.v1.crypto.nacl import (
     EdPublicKey,
     InMemSecretsManager,
-    KeyPair,
     NaclV1CryptoService,
 )
 from didcomm_messaging.v1.messaging import V1DIDCommMessaging
@@ -82,20 +81,20 @@ async def bob_key(store: Store):
     kid = base58.b58encode(key.get_public_bytes()).decode()
     async with store.session() as session:
         await session.insert_key(kid, key)
-    return AskarSecretKey(key, kid)
+    return AskarKey(key, kid)
 
 
 @pytest.fixture
 def alice_key(nacl_secrets: InMemSecretsManager):
     """Generate alice's keys."""
-    yield nacl_secrets.create()
+    keypair = nacl_secrets.create()
+    yield EdPublicKey(keypair.verkey)
 
 
 @pytest.fixture
-def alice_did(alice_key: KeyPair):
-    alice_pub = EdPublicKey(alice_key.verkey)
+def alice_did(alice_key: EdPublicKey):
     input_doc = input_doc_from_keys_and_services(
-        [KeySpec(alice_pub.multikey, relationships=["authentication"])],
+        [KeySpec(alice_key.multikey, relationships=["authentication"])],
         [
             {
                 "id": "#didcomm",
@@ -109,10 +108,9 @@ def alice_did(alice_key: KeyPair):
 
 
 @pytest.fixture
-def bob_did(bob_key: AskarSecretKey):
-    bob_pub = AskarKey(bob_key.key, bob_key.kid)
+def bob_did(bob_key: AskarKey):
     input_doc = input_doc_from_keys_and_services(
-        [KeySpec(bob_pub.multikey, relationships=["authentication"])],
+        [KeySpec(bob_key.multikey, relationships=["authentication"])],
         [
             {
                 "id": "#didcomm",
