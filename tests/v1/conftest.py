@@ -81,7 +81,7 @@ async def bob_key(store: Store):
     kid = base58.b58encode(key.get_public_bytes()).decode()
     async with store.session() as session:
         await session.insert_key(kid, key)
-    return AskarKey(key, kid)
+    yield AskarKey(key, kid)
 
 
 @pytest.fixture

@@ -130,6 +130,10 @@ class AskarSecretKey(SecretKey):
         """Get the key ID."""
         return self._kid
 
+    def as_public_key(self) -> AskarKey:
+        """Return AskarKey representation."""
+        return AskarKey(self.key, self.kid)
+
 
 class AskarCryptoService(CryptoService[AskarKey, AskarSecretKey]):
     """CryptoService backend implemented using Askar."""
@@ -413,4 +417,4 @@ class AskarSecretsManager(SecretsManager[AskarSecretKey]):
                 return None
 
         # cached_property doesn't play nice with pyright
-        return AskarKey(key_entry.key, kid)  # type: ignore
+        return AskarSecretKey(key_entry.key, kid)  # type: ignore
