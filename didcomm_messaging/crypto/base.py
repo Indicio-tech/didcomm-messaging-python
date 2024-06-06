@@ -69,6 +69,11 @@ class PublicKey(ABC):
     def multikey(self) -> str:
         """Get the key in multikey format."""
 
+    @property
+    @abstractmethod
+    def key_bytes(self) -> bytes:
+        """Get the bytes of the key."""
+
 
 class SecretKey(ABC):
     """Secret Key Type."""

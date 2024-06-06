@@ -69,6 +69,11 @@ class EdPublicKey(PublicKey):
             multicodec.wrap("ed25519-pub", base58.b58decode(self.key)), "base58btc"
         )
 
+    @property
+    def key_bytes(self) -> bytes:
+        """Get the bytes of the key."""
+        return self.value
+
 
 class NaclLegacyCryptoService(LegacyCryptoService[EdPublicKey, KeyPair]):
     """Legacy crypto service using pynacl."""
