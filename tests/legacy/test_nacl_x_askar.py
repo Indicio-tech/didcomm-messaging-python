@@ -1,13 +1,13 @@
 import pytest
 
 from didcomm_messaging.crypto.base import SecretKey
-from didcomm_messaging.legacy.messaging import LegacyDIDCommMessaging
+from didcomm_messaging.legacy.messaging import V1DIDCommMessaging
 
 
 @pytest.mark.asyncio
 async def test_pack_unpack_auth_n_to_a(
-    alice: LegacyDIDCommMessaging,
-    bob: LegacyDIDCommMessaging,
+    alice: V1DIDCommMessaging,
+    bob: V1DIDCommMessaging,
     alice_did: str,
     bob_did: str,
     alice_key: SecretKey,
@@ -25,8 +25,8 @@ async def test_pack_unpack_auth_n_to_a(
 
 @pytest.mark.asyncio
 async def test_pack_unpack_auth_a_to_n(
-    alice: LegacyDIDCommMessaging,
-    bob: LegacyDIDCommMessaging,
+    alice: V1DIDCommMessaging,
+    bob: V1DIDCommMessaging,
     alice_did: str,
     bob_did: str,
     alice_key: SecretKey,
@@ -44,8 +44,8 @@ async def test_pack_unpack_auth_a_to_n(
 
 @pytest.mark.asyncio
 async def test_pack_unpack_anon_n_to_a(
-    alice: LegacyDIDCommMessaging,
-    bob: LegacyDIDCommMessaging,
+    alice: V1DIDCommMessaging,
+    bob: V1DIDCommMessaging,
     bob_did: str,
     bob_key: SecretKey,
 ):
@@ -61,8 +61,8 @@ async def test_pack_unpack_anon_n_to_a(
 
 @pytest.mark.asyncio
 async def test_pack_unpack_anon_a_to_n(
-    alice: LegacyDIDCommMessaging,
-    bob: LegacyDIDCommMessaging,
+    alice: V1DIDCommMessaging,
+    bob: V1DIDCommMessaging,
     alice_did: str,
     alice_key: SecretKey,
 ):

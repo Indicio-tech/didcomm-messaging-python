@@ -1,4 +1,4 @@
-"""LegacyCryptoService implementation for pynacl."""
+"""V1CryptoService implementation for pynacl."""
 
 from dataclasses import dataclass
 from typing import Dict, Optional, OrderedDict, Sequence, Tuple
@@ -10,7 +10,7 @@ from didcomm_messaging.crypto.base import PublicKey, SecretKey, SecretsManager
 from didcomm_messaging.crypto.jwe import JweBuilder, JweEnvelope, JweRecipient
 from didcomm_messaging.multiformats import multibase, multicodec
 
-from .base import LegacyCryptoService, LegacyUnpackResult, RecipData
+from .base import V1CryptoService, V1UnpackResult, RecipData
 
 try:
     import nacl.bindings
@@ -18,7 +18,7 @@ try:
     import nacl.utils
 except ImportError as err:
     raise ImportError(
-        "Legacy implementation requires 'legacy' extra to be installed"
+        "V1 implementation requires 'legacy' extra to be installed"
     ) from err
 
 
@@ -75,8 +75,8 @@ class EdPublicKey(PublicKey):
         return self.value
 
 
-class NaclLegacyCryptoService(LegacyCryptoService[EdPublicKey, KeyPair]):
-    """Legacy crypto service using pynacl."""
+class NaclV1CryptoService(V1CryptoService[EdPublicKey, KeyPair]):
+    """V1 crypto service using pynacl."""
 
     def kid_to_public_key(self, kid: str):
         """Get a public key from a kid.
@@ -180,7 +180,7 @@ class NaclLegacyCryptoService(LegacyCryptoService[EdPublicKey, KeyPair]):
 
     async def unpack_message(
         self, wrapper: JweEnvelope, recip_key: KeyPair, recip_data: RecipData
-    ) -> LegacyUnpackResult:
+    ) -> V1UnpackResult:
         """Decode a message using DIDCvomm v1 'unpack' algorithm."""
         cek, sender_vk = self._extract_payload_key(recip_key, recip_data)
 
@@ -188,7 +188,7 @@ class NaclLegacyCryptoService(LegacyCryptoService[EdPublicKey, KeyPair]):
         message = nacl.bindings.crypto_aead_chacha20poly1305_ietf_decrypt(
             payload_bin, wrapper.protected_b64, wrapper.iv, cek
         )
-        return LegacyUnpackResult(message, recip_key.kid, sender_vk)
+        return V1UnpackResult(message, recip_key.kid, sender_vk)
 
 
 class InMemSecretsManager(SecretsManager[KeyPair]):

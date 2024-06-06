@@ -6,27 +6,27 @@ import pytest
 import pytest_asyncio
 
 from didcomm_messaging.crypto.backend.askar import AskarKey, AskarSecretsManager
-from didcomm_messaging.legacy.askar import AskarLegacyCryptoService, AskarSecretKey
-from didcomm_messaging.legacy.messaging import LegacyDIDCommMessaging
+from didcomm_messaging.legacy.askar import AskarV1CryptoService, AskarSecretKey
+from didcomm_messaging.legacy.messaging import V1DIDCommMessaging
 from didcomm_messaging.legacy.nacl import (
     EdPublicKey,
     InMemSecretsManager,
     KeyPair,
-    NaclLegacyCryptoService,
+    NaclV1CryptoService,
 )
-from didcomm_messaging.legacy.packaging import LegacyPackagingService
+from didcomm_messaging.legacy.packaging import V1PackagingService
 from didcomm_messaging.resolver import DIDResolver
 from didcomm_messaging.resolver.peer import Peer4
 
 
 @pytest.fixture
 def nacl():
-    yield NaclLegacyCryptoService()
+    yield NaclV1CryptoService()
 
 
 @pytest.fixture
 def askar():
-    yield AskarLegacyCryptoService()
+    yield AskarV1CryptoService()
 
 
 @pytest.fixture
@@ -47,7 +47,7 @@ async def askar_secrets(store: Store):
 
 @pytest.fixture
 def packer():
-    yield LegacyPackagingService()
+    yield V1PackagingService()
 
 
 @pytest.fixture
@@ -57,22 +57,22 @@ def resolver():
 
 @pytest.fixture
 def alice(
-    nacl: NaclLegacyCryptoService,
+    nacl: NaclV1CryptoService,
     nacl_secrets: InMemSecretsManager,
-    packer: LegacyPackagingService,
+    packer: V1PackagingService,
     resolver: DIDResolver,
 ):
-    yield LegacyDIDCommMessaging(nacl, nacl_secrets, resolver, packer)
+    yield V1DIDCommMessaging(nacl, nacl_secrets, resolver, packer)
 
 
 @pytest.fixture
 def bob(
-    askar: AskarLegacyCryptoService,
+    askar: AskarV1CryptoService,
     askar_secrets: AskarSecretsManager,
     resolver: DIDResolver,
-    packer: LegacyPackagingService,
+    packer: V1PackagingService,
 ):
-    yield LegacyDIDCommMessaging(askar, askar_secrets, resolver, packer)
+    yield V1DIDCommMessaging(askar, askar_secrets, resolver, packer)
 
 
 @pytest_asyncio.fixture

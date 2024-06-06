@@ -1,23 +1,23 @@
-"""LegacyPackagingService interface."""
+"""V1PackagingService interface."""
 
 from typing import Generic, Optional, Sequence, Tuple, Union
 
 from didcomm_messaging.crypto.base import P, S, SecretsManager
 from didcomm_messaging.crypto.jwe import JweEnvelope, JweRecipient
 from didcomm_messaging.legacy.base import (
-    LegacyCryptoService,
-    LegacyUnpackResult,
+    V1CryptoService,
+    V1UnpackResult,
     RecipData,
 )
 from didcomm_messaging.multiformats.multibase import Base64UrlEncoder
 
 
-class LegacyPackagingServiceError(Exception):
+class V1PackagingServiceError(Exception):
     """Represents an error from the DIDComm Messaging interface."""
 
 
-class LegacyPackagingService(Generic[P, S]):
-    """Legacy packagin service."""
+class V1PackagingService(Generic[P, S]):
+    """V1 packagin service."""
 
     b64url = Base64UrlEncoder()
 
@@ -58,10 +58,10 @@ class LegacyPackagingService(Generic[P, S]):
         """Extrat packed message metadata."""
         alg = wrapper.protected.get("alg")
         if not alg:
-            raise LegacyPackagingServiceError("Missing alg header")
+            raise V1PackagingServiceError("Missing alg header")
 
         if alg not in ("Authcrypt", "Anoncrypt"):
-            raise LegacyPackagingServiceError(
+            raise V1PackagingServiceError(
                 f"Unsupported DIDComm encryption algorithm: {alg}"
             )
 
@@ -74,22 +74,22 @@ class LegacyPackagingService(Generic[P, S]):
                 break
 
         if not matched_recip or not secret:
-            raise LegacyPackagingServiceError("No recognized recipient key")
+            raise V1PackagingServiceError("No recognized recipient key")
 
         return secret, matched_recip
 
     async def unpack(
         self,
-        crypto: LegacyCryptoService[P, S],
+        crypto: V1CryptoService[P, S],
         secrets: SecretsManager[S],
         enc_message: Union[JweEnvelope, str, bytes],
-    ) -> LegacyUnpackResult:
+    ) -> V1UnpackResult:
         """Unpack a DIDComm v1 message."""
         if isinstance(enc_message, (str, bytes)):
             try:
                 wrapper = JweEnvelope.from_json(enc_message)
             except ValueError:
-                raise LegacyPackagingServiceError("Invalid packed message")
+                raise V1PackagingServiceError("Invalid packed message")
         elif isinstance(enc_message, JweEnvelope):
             wrapper = enc_message
         else:
@@ -102,7 +102,7 @@ class LegacyPackagingService(Generic[P, S]):
 
     async def pack(
         self,
-        crypto: LegacyCryptoService[P, S],
+        crypto: V1CryptoService[P, S],
         secrets: SecretsManager[S],
         message: bytes,
         to: Sequence[str],
