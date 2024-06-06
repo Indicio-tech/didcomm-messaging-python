@@ -1,7 +1,20 @@
 """Test Pack and Unpack."""
 
+import pytest
 from didcomm_messaging.legacy import crypto
 from didcomm_messaging.legacy.nacl import KeyPair
+
+
+@pytest.fixture
+def alice():
+    """Generate alice's keys."""
+    yield KeyPair(*crypto.create_keypair())
+
+
+@pytest.fixture
+def bob():
+    """Generate bob's keys."""
+    yield KeyPair(*crypto.create_keypair())
 
 
 def test_pack_unpack_auth(alice: KeyPair, bob: KeyPair):

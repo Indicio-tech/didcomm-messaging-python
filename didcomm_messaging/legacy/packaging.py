@@ -31,13 +31,14 @@ class LegacyPackagingService(Generic[P, S]):
             ValueError: If the recipients block is malformed
 
         """
-        result = {}
+        seen_recips = []
         for recip in recipients:
             recip_vk_b58 = recip.header.get("kid")
             if not recip_vk_b58:
                 raise ValueError("Blank recipient key")
-            if recip_vk_b58 in result:
+            if recip_vk_b58 in seen_recips:
                 raise ValueError("Duplicate recipient key")
+            seen_recips.append(recip_vk_b58)
 
             sender_b64 = recip.header.get("sender")
             enc_sender = self.b64url.decode(sender_b64) if sender_b64 else None
@@ -50,7 +51,6 @@ class LegacyPackagingService(Generic[P, S]):
             nonce = self.b64url.decode(nonce_b64) if nonce_b64 else None
 
             yield RecipData(recip_vk_b58, enc_sender, nonce, recip.encrypted_key)
-        return result
 
     async def extract_packed_message_metadata(
         self, secrets: SecretsManager[S], wrapper: JweEnvelope

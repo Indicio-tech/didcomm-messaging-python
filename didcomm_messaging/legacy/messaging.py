@@ -4,13 +4,15 @@ from dataclasses import dataclass
 import json
 from typing import Generic, Optional, Sequence, Union
 
+import base58
 from pydantic import AnyUrl
 from pydid import VerificationMethod
 from pydid.service import DIDCommV1Service
 
-from didcomm_messaging.crypto import SecretsManager, P, S
+from didcomm_messaging.crypto import P, S, SecretsManager
 from didcomm_messaging.legacy.base import LegacyCryptoService
 from didcomm_messaging.legacy.packaging import LegacyPackagingService
+from didcomm_messaging.multiformats import multibase, multicodec
 from didcomm_messaging.resolver import DIDResolver
 
 
@@ -57,6 +59,13 @@ class Target:
 class LegacyDIDCommMessagingService(Generic[P, S]):
     """Main entrypoint for DIDComm Messaging."""
 
+    def multikey_to_kid(self, multikey: str) -> str:
+        """Return a kid from a multikey."""
+        codec, data = multicodec.unwrap(multibase.decode(multikey))
+        if codec != multicodec.multicodec("ed25519-pub"):
+            raise LegacyDIDCommMessagingError("DIDComm v1 requires ed25519 keys")
+        return base58.b58encode(data).decode()
+
     async def did_to_target(
         self, crypto: LegacyCryptoService[P, S], resolver: DIDResolver, did: str
     ) -> Target:
@@ -72,26 +81,54 @@ class LegacyDIDCommMessagingService(Generic[P, S]):
         target = services[0]
 
         recipient_keys = [
-            crypto.verification_method_to_public_key(
-                doc.dereference_as(VerificationMethod, recip)
-            ).kid
+            self.multikey_to_kid(
+                crypto.verification_method_to_public_key(
+                    doc.dereference_as(VerificationMethod, recip)
+                ).multikey
+            )
             for recip in target.recipient_keys
         ]
         routing_keys = [
-            crypto.verification_method_to_public_key(
-                doc.dereference_as(VerificationMethod, routing_key)
-            ).kid
+            self.multikey_to_kid(
+                crypto.verification_method_to_public_key(
+                    doc.dereference_as(VerificationMethod, routing_key)
+                ).multikey
+            )
             for routing_key in target.routing_keys
         ]
         endpoint = target.service_endpoint
         if isinstance(endpoint, AnyUrl):
             endpoint = str(endpoint)
-        if not endpoint.startswith("http") or not endpoint.startswith("ws"):
+        if not endpoint.startswith("http") and not endpoint.startswith("ws"):
             raise LegacyDIDCommMessagingError(
                 f"Unable to send message to endpoint {endpoint}"
             )
 
         return Target(recipient_keys, routing_keys, endpoint)
+
+    async def from_did_to_kid(
+        self, crypto: LegacyCryptoService[P, S], resolver: DIDResolver, did: str
+    ) -> str:
+        """Resolve our DID to a kid to be used by crypto layers."""
+        doc = await resolver.resolve_and_parse(did)
+        services = [
+            service
+            for service in doc.service or []
+            if isinstance(service, DIDCommV1Service)
+        ]
+        if not services:
+            raise LegacyDIDCommMessagingError(f"Unable to send message to DID {did}")
+        target = services[0]
+
+        recipient_keys = [
+            self.multikey_to_kid(
+                crypto.verification_method_to_public_key(
+                    doc.dereference_as(VerificationMethod, recip)
+                ).multikey
+            )
+            for recip in target.recipient_keys
+        ]
+        return recipient_keys[0]
 
     def forward_wrap(self, to: str, msg: str) -> bytes:
         """Wrap a message in a forward."""
@@ -109,7 +146,7 @@ class LegacyDIDCommMessagingService(Generic[P, S]):
         secrets: SecretsManager[S],
         packaging: LegacyPackagingService[P, S],
         message: Union[dict, str, bytes],
-        to: str,
+        to: Union[str, Target],
         frm: Optional[str] = None,
         **options,
     ):
@@ -121,9 +158,10 @@ class LegacyDIDCommMessagingService(Generic[P, S]):
             secrets: secrets manager to use to look up private key material
             packaging: packaging service
             routing: routing service
-            message: to send
-            to: recipient of the message, expressed as a DID
-            frm: the sender of the message, expressed as a DID
+            message: to send; must be str, bytes, or json serializable dict
+            to: recipient of the message, expressed as a DID or Target
+            frm: the sender of the message, expressed as a DID or kid (base58 encoded
+                public key)
             options: arbitrary values to pass to the packaging service
 
         Returns:
@@ -139,7 +177,13 @@ class LegacyDIDCommMessagingService(Generic[P, S]):
         else:
             raise TypeError("message must be bytes, str, or dict")
 
-        target = await self.did_to_target(crypto, resolver, to)
+        if isinstance(to, str):
+            target = await self.did_to_target(crypto, resolver, to)
+        else:
+            target = to
+
+        if frm and frm.startswith("did:"):
+            frm = await self.from_did_to_kid(crypto, resolver, frm) if frm else None
 
         encoded_message = await packaging.pack(
             crypto,
@@ -202,18 +246,17 @@ class LegacyDIDCommMessaging(Generic[P, S]):
     async def pack(
         self,
         message: Union[dict, str, bytes],
-        to: str,
+        to: Union[str, Target],
         frm: Optional[str] = None,
         **options,
     ) -> LegacyPackResult:
         """Pack a message.
 
         Args:
-            message: to send
-            to: recipient of the message, expressed as a KID which is a Base58
-                encoded Ed25519 public key
-            frm: the sender of the message, expressed as a KID which is a Base58
-                encoded Ed25519 public key
+            message: to send; must be str, bytes, or json serializable dict
+            to: recipient of the message, expressed as a DID or Target
+            frm: the sender of the message, expressed as a DID or kid (base58 encoded
+                public key)
             options: arbitrary values to pass to the packaging service
 
         Returns:
