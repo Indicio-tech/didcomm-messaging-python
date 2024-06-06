@@ -58,11 +58,14 @@ class AskarV1CryptoService(V1CryptoService[AskarKey, AskarSecretKey]):
         # avoid converting to bytes object: this way the only copy is zeroed afterward
         # tell type checking it's bytes to make it happy
         cek_b = cast(bytes, key_get_secret_bytes(cek._handle))
-        sender_vk = from_key.kid if from_key else None
+        sender_vk = (
+            self.public_key_to_v1_kid(from_key.as_public_key()) if from_key else None
+        )
         sender_xk = from_key.key.convert_key(KeyAlg.X25519) if from_key else None
 
         for target_vk in to_verkeys:
             target_xk = target_vk.key.convert_key(KeyAlg.X25519)
+            target_vk_kid = self.public_key_to_v1_kid(target_vk)
             if sender_vk and sender_xk:
                 enc_sender = crypto_box.crypto_box_seal(target_xk, sender_vk)
                 nonce = crypto_box.random_nonce()
@@ -72,7 +75,7 @@ class AskarV1CryptoService(V1CryptoService[AskarKey, AskarSecretKey]):
                         encrypted_key=enc_cek,
                         header=OrderedDict(
                             [
-                                ("kid", target_vk.kid),
+                                ("kid", target_vk_kid),
                                 ("sender", self.b64url.encode(enc_sender)),
                                 ("iv", self.b64url.encode(nonce)),
                             ]
@@ -82,7 +85,7 @@ class AskarV1CryptoService(V1CryptoService[AskarKey, AskarSecretKey]):
             else:
                 enc_cek = crypto_box.crypto_box_seal(target_xk, cek_b)
                 builder.add_recipient(
-                    JweRecipient(encrypted_key=enc_cek, header={"kid": target_vk.kid})
+                    JweRecipient(encrypted_key=enc_cek, header={"kid": target_vk_kid})
                 )
         builder.set_protected(
             OrderedDict(
