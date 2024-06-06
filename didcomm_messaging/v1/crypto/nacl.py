@@ -18,7 +18,7 @@ try:
     import nacl.utils
 except ImportError as err:
     raise ImportError(
-        "V1 implementation requires 'legacy' extra to be installed"
+        "V1 nacl implementation requires 'nacl' extra to be installed"
     ) from err
 
 

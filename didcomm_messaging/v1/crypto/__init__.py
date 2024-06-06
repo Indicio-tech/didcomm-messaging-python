@@ -1,4 +1,4 @@
-"""V1 DIDComm v1 Interfaces.
+"""V1 DIDComm Crypto interfaces.
 
 These components are intended to provide a similar structure to the DIDComm v2
 interfaces provided by this library. While the community is transitioning from
