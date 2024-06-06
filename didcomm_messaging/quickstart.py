@@ -258,7 +258,7 @@ async def setup_relay(
     await secrets.add_secret(AskarSecretKey(verkey, f"{new_did}#key-1"))
     await secrets.add_secret(AskarSecretKey(xkey, f"{new_did}#key-2"))
 
-    # Legacy formats
+    # V1 formats
     # verkey
     await secrets.add_secret(AskarSecretKey(verkey, doc.authentication[0]))
     # xkey

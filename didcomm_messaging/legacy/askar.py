@@ -1,4 +1,4 @@
-"""LegacyCryptoService implementation for askar."""
+"""V1CryptoService implementation for askar."""
 
 from collections import OrderedDict
 from typing import Optional, Sequence, Tuple, cast
@@ -8,8 +8,8 @@ from pydid import VerificationMethod
 
 from didcomm_messaging.crypto.jwe import JweBuilder, JweEnvelope, JweRecipient
 from didcomm_messaging.legacy.base import (
-    LegacyCryptoService,
-    LegacyUnpackResult,
+    V1CryptoService,
+    V1UnpackResult,
     RecipData,
 )
 
@@ -18,11 +18,11 @@ try:
     from aries_askar.bindings import key_get_secret_bytes
     from didcomm_messaging.crypto.backend.askar import AskarKey, AskarSecretKey
 except ImportError:
-    raise ImportError("Legacy Askar backend requires the 'askar' extra to be installed")
+    raise ImportError("V1 Askar backend requires the 'askar' extra to be installed")
 
 
-class AskarLegacyCryptoService(LegacyCryptoService[AskarKey, AskarSecretKey]):
-    """Legacy crypto service implementation for askar."""
+class AskarV1CryptoService(V1CryptoService[AskarKey, AskarSecretKey]):
+    """V1 crypto service implementation for askar."""
 
     def kid_to_public_key(self, kid: str) -> AskarKey:
         """Get a public key from a kid.
@@ -97,7 +97,7 @@ class AskarLegacyCryptoService(LegacyCryptoService[AskarKey, AskarSecretKey]):
         wrapper: JweEnvelope,
         recip_key: AskarSecretKey,
         recip_data: RecipData,
-    ) -> LegacyUnpackResult:
+    ) -> V1UnpackResult:
         """Decode a message using the DIDComm v1 'unpack' algorithm."""
         payload_key, sender_vk = self._extract_payload_key(recip_key.key, recip_data)
 
@@ -108,7 +108,7 @@ class AskarLegacyCryptoService(LegacyCryptoService[AskarKey, AskarSecretKey]):
             tag=wrapper.tag,
             aad=wrapper.protected_b64,
         )
-        return LegacyUnpackResult(message, recip_key.kid, sender_vk)
+        return V1UnpackResult(message, recip_key.kid, sender_vk)
 
     def _extract_payload_key(
         self, recip_key: Key, recip_data: RecipData

@@ -1,7 +1,7 @@
 """DIDComm v1 packing and unpacking.
 
 This implementation is kept around for backwards compatibility. It is
-likely that you should use the LegacyCryptoService interfaces instead.
+likely that you should use the V1CryptoService interfaces instead.
 """
 
 from collections import OrderedDict
@@ -19,7 +19,7 @@ try:
     import nacl.utils
 except ImportError as err:
     raise ImportError(
-        "Legacy implementation requires 'legacy' extra to be installed"
+        "V1 implementation requires 'legacy' extra to be installed"
     ) from err
 
 from didcomm_messaging.multiformats.multibase import Base64UrlEncoder

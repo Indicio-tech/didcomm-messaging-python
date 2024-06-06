@@ -18,7 +18,7 @@ class RecipData(NamedTuple):
     enc_cek: bytes
 
 
-class LegacyUnpackResult(NamedTuple):
+class V1UnpackResult(NamedTuple):
     """Result of unpacking."""
 
     message: bytes
@@ -26,7 +26,7 @@ class LegacyUnpackResult(NamedTuple):
     sender: Optional[str]
 
 
-class LegacyCryptoService(ABC, Generic[P, S]):
+class V1CryptoService(ABC, Generic[P, S]):
     """CryptoService interface for DIDComm v1."""
 
     b64url = Base64UrlEncoder()
@@ -52,5 +52,5 @@ class LegacyCryptoService(ABC, Generic[P, S]):
     @abstractmethod
     async def unpack_message(
         self, wrapper: JweEnvelope, recip_key: S, recip_data: RecipData
-    ) -> LegacyUnpackResult:
+    ) -> V1UnpackResult:
         """Decode a message using DIDCvomm v1 'unpack' algorithm."""

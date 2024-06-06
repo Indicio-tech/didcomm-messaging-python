@@ -1,4 +1,4 @@
-"""Legacy messaging service."""
+"""V1 messaging service."""
 
 from dataclasses import dataclass
 import json
@@ -10,17 +10,17 @@ from pydid import VerificationMethod
 from pydid.service import DIDCommV1Service
 
 from didcomm_messaging.crypto import P, S, SecretsManager
-from didcomm_messaging.legacy.base import LegacyCryptoService
-from didcomm_messaging.legacy.packaging import LegacyPackagingService
+from didcomm_messaging.legacy.base import V1CryptoService
+from didcomm_messaging.legacy.packaging import V1PackagingService
 from didcomm_messaging.resolver import DIDResolver
 
 
-class LegacyDIDCommMessagingError(Exception):
+class V1DIDCommMessagingError(Exception):
     """Raised on error in legacy didcomm messaging."""
 
 
 @dataclass
-class LegacyPackResult:
+class V1PackResult:
     """Result of packing a message."""
 
     message: bytes
@@ -28,7 +28,7 @@ class LegacyPackResult:
 
 
 @dataclass
-class LegacyUnpackResult:
+class V1UnpackResult:
     """Result of unpacking a message."""
 
     unpacked: bytes
@@ -55,11 +55,11 @@ class Target:
     endpoint: str
 
 
-class LegacyDIDCommMessagingService(Generic[P, S]):
+class V1DIDCommMessagingService(Generic[P, S]):
     """Main entrypoint for DIDComm Messaging."""
 
     async def did_to_target(
-        self, crypto: LegacyCryptoService[P, S], resolver: DIDResolver, did: str
+        self, crypto: V1CryptoService[P, S], resolver: DIDResolver, did: str
     ) -> Target:
         """Resolve recipient information from a DID."""
         doc = await resolver.resolve_and_parse(did)
@@ -69,7 +69,7 @@ class LegacyDIDCommMessagingService(Generic[P, S]):
             if isinstance(service, DIDCommV1Service)
         ]
         if not services:
-            raise LegacyDIDCommMessagingError(f"Unable to send message to DID {did}")
+            raise V1DIDCommMessagingError(f"Unable to send message to DID {did}")
         target = services[0]
 
         recipient_keys = [
@@ -92,14 +92,14 @@ class LegacyDIDCommMessagingService(Generic[P, S]):
         if isinstance(endpoint, AnyUrl):
             endpoint = str(endpoint)
         if not endpoint.startswith("http") and not endpoint.startswith("ws"):
-            raise LegacyDIDCommMessagingError(
+            raise V1DIDCommMessagingError(
                 f"Unable to send message to endpoint {endpoint}"
             )
 
         return Target(recipient_keys, routing_keys, endpoint)
 
     async def from_did_to_kid(
-        self, crypto: LegacyCryptoService[P, S], resolver: DIDResolver, did: str
+        self, crypto: V1CryptoService[P, S], resolver: DIDResolver, did: str
     ) -> str:
         """Resolve our DID to a kid to be used by crypto layers."""
         doc = await resolver.resolve_and_parse(did)
@@ -109,7 +109,7 @@ class LegacyDIDCommMessagingService(Generic[P, S]):
             if isinstance(service, DIDCommV1Service)
         ]
         if not services:
-            raise LegacyDIDCommMessagingError(f"Unable to send message to DID {did}")
+            raise V1DIDCommMessagingError(f"Unable to send message to DID {did}")
         target = services[0]
 
         recipient_keys = [
@@ -133,10 +133,10 @@ class LegacyDIDCommMessagingService(Generic[P, S]):
 
     async def pack(
         self,
-        crypto: LegacyCryptoService[P, S],
+        crypto: V1CryptoService[P, S],
         resolver: DIDResolver,
         secrets: SecretsManager[S],
-        packaging: LegacyPackagingService[P, S],
+        packaging: V1PackagingService[P, S],
         message: Union[dict, str, bytes],
         to: Union[str, Target],
         frm: Optional[str] = None,
@@ -197,19 +197,19 @@ class LegacyDIDCommMessagingService(Generic[P, S]):
                 )
                 forward_to = routing_key
 
-        return LegacyPackResult(encoded_message.to_json().encode(), target.endpoint)
+        return V1PackResult(encoded_message.to_json().encode(), target.endpoint)
 
     async def unpack(
         self,
-        crypto: LegacyCryptoService[P, S],
+        crypto: V1CryptoService[P, S],
         secrets: SecretsManager[S],
-        packaging: LegacyPackagingService[P, S],
+        packaging: V1PackagingService[P, S],
         encoded_message: bytes,
         **options,
-    ) -> LegacyUnpackResult:
+    ) -> V1UnpackResult:
         """Unpack a message."""
         unpacked, recip, sender = await packaging.unpack(crypto, secrets, encoded_message)
-        return LegacyUnpackResult(
+        return V1UnpackResult(
             unpacked,
             encrytped=bool(recip),
             authenticated=bool(sender),
@@ -218,22 +218,22 @@ class LegacyDIDCommMessagingService(Generic[P, S]):
         )
 
 
-class LegacyDIDCommMessaging(Generic[P, S]):
+class V1DIDCommMessaging(Generic[P, S]):
     """Main entrypoint for DIDComm Messaging."""
 
     def __init__(
         self,
-        crypto: LegacyCryptoService[P, S],
+        crypto: V1CryptoService[P, S],
         secrets: SecretsManager[S],
         resolver: DIDResolver,
-        packaging: LegacyPackagingService[P, S],
+        packaging: V1PackagingService[P, S],
     ):
         """Initialize the DIDComm Messaging service."""
         self.crypto = crypto
         self.secrets = secrets
         self.resolver = resolver
         self.packaging = packaging
-        self.dmp = LegacyDIDCommMessagingService()
+        self.dmp = V1DIDCommMessagingService()
 
     async def pack(
         self,
@@ -241,7 +241,7 @@ class LegacyDIDCommMessaging(Generic[P, S]):
         to: Union[str, Target],
         frm: Optional[str] = None,
         **options,
-    ) -> LegacyPackResult:
+    ) -> V1PackResult:
         """Pack a message.
 
         Args:
@@ -252,7 +252,7 @@ class LegacyDIDCommMessaging(Generic[P, S]):
             options: arbitrary values to pass to the packaging service
 
         Returns:
-            LegacyPackResult with packed message and target services
+            V1PackResult with packed message and target services
         """
         return await self.dmp.pack(
             self.crypto,
@@ -269,7 +269,7 @@ class LegacyDIDCommMessaging(Generic[P, S]):
         self,
         encoded_message: bytes,
         **options,
-    ) -> LegacyUnpackResult:
+    ) -> V1UnpackResult:
         """Unpack a message."""
         return await self.dmp.unpack(
             self.crypto,
