@@ -9,7 +9,7 @@ authors = [
 ]
 dependencies = [
     "base58>=2.1.1",
-    "pydid>=0.4.2",
+    "pydid>=0.5.1",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

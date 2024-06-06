@@ -4,12 +4,14 @@ from collections import OrderedDict
 from typing import Optional, Sequence, Tuple, cast
 
 from base58 import b58decode
+import base58
 from pydid import VerificationMethod
 
 from didcomm_messaging.crypto.jwe import JweBuilder, JweEnvelope, JweRecipient
 from .base import (
     V1CryptoService,
-    V1UnpackResult,
+    V1CryptoServiceError,
+    V1CryptoUnpackResult,
     RecipData,
 )
 
@@ -24,12 +26,18 @@ except ImportError:
 class AskarV1CryptoService(V1CryptoService[AskarKey, AskarSecretKey]):
     """V1 crypto service implementation for askar."""
 
-    def kid_to_public_key(self, kid: str) -> AskarKey:
+    def v1_kid_to_public_key(self, kid: str) -> AskarKey:
         """Get a public key from a kid.
 
         In DIDComm v1, kids are the base58 encoded keys.
         """
         return AskarKey(Key.from_public_bytes(KeyAlg.ED25519, b58decode(kid)), kid)
+
+    def public_key_to_v1_kid(self, key: AskarKey) -> str:
+        """Convert a public key into a v1 kid representation."""
+        if key.key.algorithm != KeyAlg.ED25519:
+            raise V1CryptoServiceError()
+        return base58.b58encode(key.key.get_public_bytes()).decode()
 
     @classmethod
     def verification_method_to_public_key(cls, vm: VerificationMethod) -> AskarKey:
@@ -72,8 +80,6 @@ class AskarV1CryptoService(V1CryptoService[AskarKey, AskarSecretKey]):
                     )
                 )
             else:
-                enc_sender = None
-                nonce = None
                 enc_cek = crypto_box.crypto_box_seal(target_xk, cek_b)
                 builder.add_recipient(
                     JweRecipient(encrypted_key=enc_cek, header={"kid": target_vk.kid})
@@ -97,7 +103,7 @@ class AskarV1CryptoService(V1CryptoService[AskarKey, AskarSecretKey]):
         wrapper: JweEnvelope,
         recip_key: AskarSecretKey,
         recip_data: RecipData,
-    ) -> V1UnpackResult:
+    ) -> V1CryptoUnpackResult:
         """Decode a message using the DIDComm v1 'unpack' algorithm."""
         payload_key, sender_vk = self._extract_payload_key(recip_key.key, recip_data)
 
@@ -108,7 +114,7 @@ class AskarV1CryptoService(V1CryptoService[AskarKey, AskarSecretKey]):
             tag=wrapper.tag,
             aad=wrapper.protected_b64,
         )
-        return V1UnpackResult(message, recip_key.kid, sender_vk)
+        return V1CryptoUnpackResult(message, recip_key.kid, sender_vk)
 
     def _extract_payload_key(
         self, recip_key: Key, recip_data: RecipData

@@ -6,7 +6,7 @@ from didcomm_messaging.crypto.base import P, S, SecretsManager
 from didcomm_messaging.crypto.jwe import JweEnvelope, JweRecipient
 from didcomm_messaging.v1.crypto.base import (
     V1CryptoService,
-    V1UnpackResult,
+    V1CryptoUnpackResult,
     RecipData,
 )
 from didcomm_messaging.multiformats.multibase import Base64UrlEncoder
@@ -83,7 +83,7 @@ class V1PackagingService(Generic[P, S]):
         crypto: V1CryptoService[P, S],
         secrets: SecretsManager[S],
         enc_message: Union[JweEnvelope, str, bytes],
-    ) -> V1UnpackResult:
+    ) -> V1CryptoUnpackResult:
         """Unpack a DIDComm v1 message."""
         if isinstance(enc_message, (str, bytes)):
             try:
@@ -109,6 +109,6 @@ class V1PackagingService(Generic[P, S]):
         frm: Optional[str] = None,
     ):
         """Pack a DIDComm v1 message."""
-        recip_keys = [crypto.kid_to_public_key(kid) for kid in to]
+        recip_keys = [crypto.v1_kid_to_public_key(kid) for kid in to]
         sender_key = await secrets.get_secret_by_kid(frm) if frm else None
         return await crypto.pack_message(recip_keys, sender_key, message)

@@ -32,9 +32,7 @@ class Peer4(DIDResolver):
 
     async def is_resolvable(self, did: str) -> bool:
         """Check to see if a DID is resolvable."""
-        return bool(peer_4_pattern_short.match(did)) or bool(
-            peer_4_pattern_long.match(did)
-        )
+        return bool(peer_4_pattern_short.match(did) or peer_4_pattern_long.match(did))
 
     async def resolve(self, did: str) -> dict:
         """Resolve a did:peer:4 DID."""

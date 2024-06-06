@@ -4,15 +4,14 @@ from dataclasses import dataclass
 import json
 from typing import Generic, Optional, Sequence, Union
 
-import base58
 from pydantic import AnyUrl
-from pydid import VerificationMethod
+from pydid import DIDDocument, VerificationMethod
 from pydid.service import DIDCommV1Service
 
 from didcomm_messaging.crypto import P, S, SecretsManager
+from didcomm_messaging.resolver import DIDResolver
 from didcomm_messaging.v1.crypto.base import V1CryptoService
 from didcomm_messaging.v1.packaging import V1PackagingService
-from didcomm_messaging.resolver import DIDResolver
 
 
 class V1DIDCommMessagingError(Exception):
@@ -32,7 +31,7 @@ class V1UnpackResult:
     """Result of unpacking a message."""
 
     unpacked: bytes
-    encrytped: bool
+    encrypted: bool
     authenticated: bool
     recipient_kid: str
     sender_kid: Optional[str] = None
@@ -58,6 +57,14 @@ class Target:
 class V1DIDCommMessagingService(Generic[P, S]):
     """Main entrypoint for DIDComm Messaging."""
 
+    def vm_to_v1_kid(self, crypto: V1CryptoService, doc: DIDDocument, ref: str) -> str:
+        """Convert a verification method ref to a DIDComm v1 kid."""
+        return crypto.public_key_to_v1_kid(
+            crypto.verification_method_to_public_key(
+                doc.dereference_as(VerificationMethod, ref)
+            )
+        )
+
     async def did_to_target(
         self, crypto: V1CryptoService[P, S], resolver: DIDResolver, did: str
     ) -> Target:
@@ -73,19 +80,10 @@ class V1DIDCommMessagingService(Generic[P, S]):
         target = services[0]
 
         recipient_keys = [
-            base58.b58encode(
-                crypto.verification_method_to_public_key(
-                    doc.dereference_as(VerificationMethod, recip)
-                ).key_bytes
-            ).decode()
-            for recip in target.recipient_keys
+            self.vm_to_v1_kid(crypto, doc, recip) for recip in target.recipient_keys
         ]
         routing_keys = [
-            base58.b58encode(
-                crypto.verification_method_to_public_key(
-                    doc.dereference_as(VerificationMethod, routing_key)
-                ).key_bytes
-            ).decode()
+            self.vm_to_v1_kid(crypto, doc, routing_key)
             for routing_key in target.routing_keys
         ]
         endpoint = target.service_endpoint
@@ -113,12 +111,7 @@ class V1DIDCommMessagingService(Generic[P, S]):
         target = services[0]
 
         recipient_keys = [
-            base58.b58encode(
-                crypto.verification_method_to_public_key(
-                    doc.dereference_as(VerificationMethod, recip)
-                ).key_bytes
-            ).decode()
-            for recip in target.recipient_keys
+            self.vm_to_v1_kid(crypto, doc, recip) for recip in target.recipient_keys
         ]
         return recipient_keys[0]
 
@@ -211,7 +204,7 @@ class V1DIDCommMessagingService(Generic[P, S]):
         unpacked, recip, sender = await packaging.unpack(crypto, secrets, encoded_message)
         return V1UnpackResult(
             unpacked,
-            encrytped=bool(recip),
+            encrypted=bool(recip),
             authenticated=bool(sender),
             recipient_kid=recip,
             sender_kid=sender,
