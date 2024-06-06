@@ -12,7 +12,6 @@ from pydid.service import DIDCommV1Service
 from didcomm_messaging.crypto import P, S, SecretsManager
 from didcomm_messaging.legacy.base import LegacyCryptoService
 from didcomm_messaging.legacy.packaging import LegacyPackagingService
-from didcomm_messaging.multiformats import multibase, multicodec
 from didcomm_messaging.resolver import DIDResolver
 
 
@@ -59,13 +58,6 @@ class Target:
 class LegacyDIDCommMessagingService(Generic[P, S]):
     """Main entrypoint for DIDComm Messaging."""
 
-    def multikey_to_kid(self, multikey: str) -> str:
-        """Return a kid from a multikey."""
-        codec, data = multicodec.unwrap(multibase.decode(multikey))
-        if codec != multicodec.multicodec("ed25519-pub"):
-            raise LegacyDIDCommMessagingError("DIDComm v1 requires ed25519 keys")
-        return base58.b58encode(data).decode()
-
     async def did_to_target(
         self, crypto: LegacyCryptoService[P, S], resolver: DIDResolver, did: str
     ) -> Target:
@@ -81,19 +73,19 @@ class LegacyDIDCommMessagingService(Generic[P, S]):
         target = services[0]
 
         recipient_keys = [
-            self.multikey_to_kid(
+            base58.b58encode(
                 crypto.verification_method_to_public_key(
                     doc.dereference_as(VerificationMethod, recip)
-                ).multikey
-            )
+                ).key_bytes
+            ).decode()
             for recip in target.recipient_keys
         ]
         routing_keys = [
-            self.multikey_to_kid(
+            base58.b58encode(
                 crypto.verification_method_to_public_key(
                     doc.dereference_as(VerificationMethod, routing_key)
-                ).multikey
-            )
+                ).key_bytes
+            ).decode()
             for routing_key in target.routing_keys
         ]
         endpoint = target.service_endpoint
@@ -121,11 +113,11 @@ class LegacyDIDCommMessagingService(Generic[P, S]):
         target = services[0]
 
         recipient_keys = [
-            self.multikey_to_kid(
+            base58.b58encode(
                 crypto.verification_method_to_public_key(
                     doc.dereference_as(VerificationMethod, recip)
-                ).multikey
-            )
+                ).key_bytes
+            ).decode()
             for recip in target.recipient_keys
         ]
         return recipient_keys[0]

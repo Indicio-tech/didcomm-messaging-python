@@ -56,6 +56,18 @@ class AuthlibKey(PublicKey):
         """Return the key in multikey format."""
         return self._multikey
 
+    @property
+    def key_bytes(self) -> bytes:
+        """Get the bytes of the key."""
+        jwk = self.key.as_dict(is_private=False)
+        codec = self.kty_crv_to_codec.get((jwk["kty"], jwk.get("crv")))
+
+        if not codec:
+            raise ValueError("Unsupported key type")
+
+        key_bytes = b64url.decode(jwk["x"])
+        return key_bytes
+
     @classmethod
     def key_to_multikey(cls, key: AsymmetricKey) -> str:
         """Convert an Authlib key to a multikey."""
