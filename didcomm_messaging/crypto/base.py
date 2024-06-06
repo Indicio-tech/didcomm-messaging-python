@@ -46,11 +46,12 @@ class PublicKey(ABC):
                 return decoded
             else:
                 codec, decoded = multicodec.unwrap(decoded)
-                expected_codec = cls.type_to_codec.get(vm.type)
-                if not expected_codec:
-                    raise ValueError("Unsupported verification method type")
-                if codec.name != expected_codec:
-                    raise ValueError("Type and codec mismatch")
+                if vm.type != "Multikey":
+                    expected_codec = cls.type_to_codec.get(vm.type)
+                    if not expected_codec:
+                        raise ValueError("Unsupported verification method type")
+                    if codec.name != expected_codec:
+                        raise ValueError("Type and codec mismatch")
                 return decoded
 
         if vm.public_key_base58:

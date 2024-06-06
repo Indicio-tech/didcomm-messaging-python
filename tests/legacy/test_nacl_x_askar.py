@@ -1,90 +1,76 @@
 import pytest
 
-from didcomm_messaging.crypto.backend.askar import AskarSecretKey, AskarSecretsManager
-from didcomm_messaging.legacy.nacl import (
-    InMemSecretsManager,
-    NaclLegacyCryptoService,
-    KeyPair,
-)
-from didcomm_messaging.legacy.askar import AskarLegacyCryptoService
-from didcomm_messaging.legacy.packaging import LegacyPackagingService
+from didcomm_messaging.crypto.base import SecretKey
+from didcomm_messaging.legacy.messaging import LegacyDIDCommMessaging
 
 
 @pytest.mark.asyncio
 async def test_pack_unpack_auth_n_to_a(
-    nacl: NaclLegacyCryptoService,
-    askar: AskarLegacyCryptoService,
-    nacl_secrets: InMemSecretsManager,
-    askar_secrets: AskarSecretsManager,
-    packer: LegacyPackagingService,
-    alice: KeyPair,
-    bobskar: AskarSecretKey,
+    alice: LegacyDIDCommMessaging,
+    bob: LegacyDIDCommMessaging,
+    alice_did: str,
+    bob_did: str,
+    alice_key: SecretKey,
+    bob_key: SecretKey,
 ):
     """Test that we can pack and unpack going from askar to crypto."""
 
     msg = b"hello world"
-    packed_msg = await packer.pack(nacl, nacl_secrets, msg, [bobskar.kid], alice.kid)
-    recv_msg, receiver, sender = await packer.unpack(askar, askar_secrets, packed_msg)
-    assert recv_msg == msg
-    assert sender == alice.verkey_b58
-    assert receiver == bobskar.kid
+    packed_msg = await alice.pack(msg, bob_did, alice_did)
+    unpacked = await bob.unpack(packed_msg.message)
+    assert unpacked.unpacked == msg
+    assert unpacked.sender_kid == alice_key.kid
+    assert unpacked.recipient_kid == bob_key.kid
 
 
 @pytest.mark.asyncio
 async def test_pack_unpack_auth_a_to_n(
-    nacl: NaclLegacyCryptoService,
-    askar: AskarLegacyCryptoService,
-    askar_secrets: AskarSecretsManager,
-    nacl_secrets: InMemSecretsManager,
-    packer: LegacyPackagingService,
-    askarlice: AskarSecretKey,
-    bob: KeyPair,
+    alice: LegacyDIDCommMessaging,
+    bob: LegacyDIDCommMessaging,
+    alice_did: str,
+    bob_did: str,
+    alice_key: SecretKey,
+    bob_key: SecretKey,
 ):
     """Test that we can pack and unpack going from askar to crypto."""
 
     msg = b"hello world"
-    packed_msg = await packer.pack(
-        askar, askar_secrets, msg, [bob.verkey_b58], askarlice.kid
-    )
-    recv_msg, receiver, sender = await packer.unpack(nacl, nacl_secrets, packed_msg)
-    assert recv_msg == msg
-    assert sender == askarlice.kid
-    assert receiver == bob.kid
+    packed_msg = await bob.pack(msg, alice_did, bob_did)
+    unpacked = await alice.unpack(packed_msg.message)
+    assert unpacked.unpacked == msg
+    assert unpacked.sender_kid == bob_key.kid
+    assert unpacked.recipient_kid == alice_key.kid
 
 
 @pytest.mark.asyncio
 async def test_pack_unpack_anon_n_to_a(
-    nacl: NaclLegacyCryptoService,
-    askar: AskarLegacyCryptoService,
-    nacl_secrets: InMemSecretsManager,
-    askar_secrets: AskarSecretsManager,
-    packer: LegacyPackagingService,
-    bobskar: AskarSecretKey,
+    alice: LegacyDIDCommMessaging,
+    bob: LegacyDIDCommMessaging,
+    bob_did: str,
+    bob_key: SecretKey,
 ):
     """Test that we can pack and unpack going from askar to crypto."""
 
     msg = b"hello world"
-    packed_msg = await packer.pack(nacl, nacl_secrets, msg, [bobskar.kid])
-    recv_msg, receiver, sender = await packer.unpack(askar, askar_secrets, packed_msg)
-    assert recv_msg == msg
-    assert sender is None
-    assert receiver == bobskar.kid
+    packed_msg = await alice.pack(msg, bob_did)
+    unpacked = await bob.unpack(packed_msg.message)
+    assert unpacked.unpacked == msg
+    assert unpacked.recipient_kid == bob_key.kid
+    assert unpacked.sender_kid is None
 
 
 @pytest.mark.asyncio
 async def test_pack_unpack_anon_a_to_n(
-    nacl: NaclLegacyCryptoService,
-    askar: AskarLegacyCryptoService,
-    nacl_secrets: InMemSecretsManager,
-    askar_secrets: AskarSecretsManager,
-    packer: LegacyPackagingService,
-    bob: KeyPair,
+    alice: LegacyDIDCommMessaging,
+    bob: LegacyDIDCommMessaging,
+    alice_did: str,
+    alice_key: SecretKey,
 ):
     """Test that we can pack and unpack going from askar to crypto."""
 
     msg = b"hello world"
-    packed_msg = await packer.pack(askar, askar_secrets, msg, [bob.verkey_b58])
-    recv_msg, receiver, sender = await packer.unpack(nacl, nacl_secrets, packed_msg)
-    assert recv_msg == msg
-    assert sender is None
-    assert receiver == bob.kid
+    packed_msg = await bob.pack(msg, alice_did)
+    unpacked = await alice.unpack(packed_msg.message)
+    assert unpacked.unpacked == msg
+    assert unpacked.recipient_kid == alice_key.kid
+    assert unpacked.sender_kid is None

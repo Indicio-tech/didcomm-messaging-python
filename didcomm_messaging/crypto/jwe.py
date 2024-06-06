@@ -312,7 +312,7 @@ class JweEnvelope:
         inst = cls(
             recipients=recipients,
             protected=protected,
-            protected_b64=protected_b64,
+            protected_b64=protected_b64.encode(),
             unprotected=unprotected,
             ciphertext=ciphertext,
             iv=iv,
