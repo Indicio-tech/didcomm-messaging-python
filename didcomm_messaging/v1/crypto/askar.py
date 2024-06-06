@@ -7,7 +7,7 @@ from base58 import b58decode
 from pydid import VerificationMethod
 
 from didcomm_messaging.crypto.jwe import JweBuilder, JweEnvelope, JweRecipient
-from didcomm_messaging.legacy.base import (
+from .base import (
     V1CryptoService,
     V1UnpackResult,
     RecipData,

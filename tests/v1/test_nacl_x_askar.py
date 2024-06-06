@@ -1,7 +1,7 @@
 import pytest
 
 from didcomm_messaging.crypto.base import SecretKey
-from didcomm_messaging.legacy.messaging import V1DIDCommMessaging
+from didcomm_messaging.v1.messaging import V1DIDCommMessaging
 
 
 @pytest.mark.asyncio

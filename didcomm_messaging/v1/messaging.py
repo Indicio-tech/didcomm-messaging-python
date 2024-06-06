@@ -10,13 +10,13 @@ from pydid import VerificationMethod
 from pydid.service import DIDCommV1Service
 
 from didcomm_messaging.crypto import P, S, SecretsManager
-from didcomm_messaging.legacy.base import V1CryptoService
-from didcomm_messaging.legacy.packaging import V1PackagingService
+from didcomm_messaging.v1.crypto.base import V1CryptoService
+from didcomm_messaging.v1.packaging import V1PackagingService
 from didcomm_messaging.resolver import DIDResolver
 
 
 class V1DIDCommMessagingError(Exception):
-    """Raised on error in legacy didcomm messaging."""
+    """Raised on error in v1 didcomm messaging."""
 
 
 @dataclass

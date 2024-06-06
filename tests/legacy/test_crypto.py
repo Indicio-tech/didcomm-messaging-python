@@ -2,7 +2,7 @@
 
 import pytest
 from didcomm_messaging.legacy import crypto
-from didcomm_messaging.legacy.nacl import KeyPair
+from didcomm_messaging.v1.crypto.nacl import KeyPair
 
 
 @pytest.fixture

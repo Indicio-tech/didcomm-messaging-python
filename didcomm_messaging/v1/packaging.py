@@ -4,7 +4,7 @@ from typing import Generic, Optional, Sequence, Tuple, Union
 
 from didcomm_messaging.crypto.base import P, S, SecretsManager
 from didcomm_messaging.crypto.jwe import JweEnvelope, JweRecipient
-from didcomm_messaging.legacy.base import (
+from didcomm_messaging.v1.crypto.base import (
     V1CryptoService,
     V1UnpackResult,
     RecipData,

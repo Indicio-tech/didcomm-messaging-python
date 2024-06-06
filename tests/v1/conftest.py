@@ -1,22 +1,22 @@
 from aries_askar import Key, KeyAlg, Store
 import base58
-from did_peer_4.input_doc import KeySpec, input_doc_from_keys_and_services
 import did_peer_4
+from did_peer_4.input_doc import KeySpec, input_doc_from_keys_and_services
 import pytest
 import pytest_asyncio
 
 from didcomm_messaging.crypto.backend.askar import AskarKey, AskarSecretsManager
-from didcomm_messaging.legacy.askar import AskarV1CryptoService, AskarSecretKey
-from didcomm_messaging.legacy.messaging import V1DIDCommMessaging
-from didcomm_messaging.legacy.nacl import (
+from didcomm_messaging.resolver import DIDResolver
+from didcomm_messaging.resolver.peer import Peer4
+from didcomm_messaging.v1.crypto.askar import AskarSecretKey, AskarV1CryptoService
+from didcomm_messaging.v1.crypto.nacl import (
     EdPublicKey,
     InMemSecretsManager,
     KeyPair,
     NaclV1CryptoService,
 )
-from didcomm_messaging.legacy.packaging import V1PackagingService
-from didcomm_messaging.resolver import DIDResolver
-from didcomm_messaging.resolver.peer import Peer4
+from didcomm_messaging.v1.messaging import V1DIDCommMessaging
+from didcomm_messaging.v1.packaging import V1PackagingService
 
 
 @pytest.fixture
