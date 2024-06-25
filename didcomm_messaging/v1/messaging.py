@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 import json
+import uuid
 from typing import Generic, Optional, Sequence, Union
 
 from pydantic import AnyUrl
@@ -118,6 +119,7 @@ class V1DIDCommMessagingService(Generic[P, S]):
     def forward_wrap(self, to: str, msg: str) -> bytes:
         """Wrap a message in a forward."""
         forward = {
+            "@id": str(uuid.uuid4()),
             "@type": "https://didcomm.org/routing/1.0/forward",
             "to": to,
             "msg": msg,
