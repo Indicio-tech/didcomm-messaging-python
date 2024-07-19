@@ -22,6 +22,7 @@ class SupportedCodecs(Enum):
     bls12381g2 = Multicodec("bls12_381-g2-pub", b"\xeb\x01")
     bls12381g1g2 = Multicodec("bls12_381-g1g2-pub", b"\xee\x01")
     secp256k1_pub = Multicodec("secp256k1-pub", b"\xe7\x01")
+    p256_pub = Multicodec("p256-pub", b"\x12\x00")
 
     @classmethod
     def by_name(cls, name: str) -> Multicodec:
@@ -49,6 +50,7 @@ MulticodecStr = Literal[
     "bls12_381-g2-pub",
     "bls12_381-g1g2-pub",
     "secp256k1-pub",
+    "p256-pub",
 ]
 
 

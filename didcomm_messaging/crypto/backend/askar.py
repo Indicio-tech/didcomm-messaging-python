@@ -30,6 +30,7 @@ class AskarKey(PublicKey):
         "ed25519-pub": KeyAlg.ED25519,
         "x25519-pub": KeyAlg.X25519,
         "secp256k1-pub": KeyAlg.K256,
+        "p256-pub": KeyAlg.P256,
     }
     alg_to_codec = {v: k for k, v in codec_to_alg.items()}
 
