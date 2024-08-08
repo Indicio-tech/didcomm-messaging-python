@@ -86,7 +86,12 @@ class V1DIDCommMessagingService(Generic[P, S]):
         routing_keys = [
             crypto.public_key_to_v1_kid(
                 crypto.verification_method_to_public_key(
-                    VerificationMethod(id=routing_key, type="Ed25519VerificationKey2020", controller=routing_key.split("#")[0], public_key_multibase=routing_key.split("#")[1])
+                    VerificationMethod(
+                        id=routing_key,
+                        type="Ed25519VerificationKey2020",
+                        controller=routing_key.split("#")[0],
+                        public_key_multibase=routing_key.split("#")[1],
+                    )
                 )
             )
             for routing_key in target.routing_keys
