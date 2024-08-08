@@ -84,7 +84,11 @@ class V1DIDCommMessagingService(Generic[P, S]):
             self.vm_to_v1_kid(crypto, doc, recip) for recip in target.recipient_keys
         ]
         routing_keys = [
-            self.vm_to_v1_kid(crypto, doc, routing_key)
+            crypto.public_key_to_v1_kid(
+                crypto.verification_method_to_public_key(
+                    VerificationMethod(id=routing_key, type="Ed25519VerificationKey2020", controller=routing_key.split("#")[0], public_key_multibase=routing_key.split("#")[1])
+                )
+            )
             for routing_key in target.routing_keys
         ]
         endpoint = target.service_endpoint
@@ -187,7 +191,7 @@ class V1DIDCommMessagingService(Generic[P, S]):
                 encoded_message = await packaging.pack(
                     crypto,
                     secrets,
-                    self.forward_wrap(forward_to, encoded_message.to_json()),
+                    self.forward_wrap(forward_to, encoded_message.serialize()),
                     [routing_key],
                 )
                 forward_to = routing_key
