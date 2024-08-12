@@ -13,7 +13,7 @@ b64 = Base64UrlEncoder()
 class JWKResolver(DIDResolver):
     """Resolve did:jwk."""
 
-    PATTERN = re.compile(r"^did:jwk:(?P<did>.*)$")
+    PATTERN = re.compile(r"^did:jwk:(?P<did>[A-Za-z0-9\-_]+)$")
 
     async def resolve(self, did: str) -> dict:
         """Resolve a did:jwk."""
@@ -22,7 +22,17 @@ class JWKResolver(DIDResolver):
         else:
             raise DIDResolutionError(f"Invalid DID: {did}")
 
-        jwk = json.loads(b64.decode(encoded))
+        try:
+            jwk = json.loads(b64.decode(encoded))
+        except json.JSONDecodeError:
+            raise DIDResolutionError("Invalid JWK")
+
+        if not isinstance(jwk, dict):
+            raise DIDResolutionError("Invalid JWK")
+
+        if "kty" not in jwk:
+            raise DIDResolutionError("Invalid JWK")
+
         doc = {
             "@context": [
                 "https://www.w3.org/ns/did/v1",
