@@ -139,7 +139,7 @@ async def test_key_from_verification_method(vm, expected):
 
     key = AskarCryptoService.verification_method_to_public_key(vm)
     print(key.kid)
-    assert type(key) == AskarKey
+    assert type(key) is AskarKey
     assert key.kid == expected
 
 
@@ -162,5 +162,5 @@ async def test_key_from_verification_method_unsupported():
 
     key = AskarCryptoService.verification_method_to_public_key(vm)
     print(key.kid)
-    assert type(key) == AskarKey
+    assert type(key) is AskarKey
     # assert key.kid == expected
