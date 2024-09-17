@@ -81,7 +81,7 @@ class V1DIDCommMessagingService(Generic[P, S]):
 
         assert routing_key.did != doc.id
         routing_key_vm = await resolver.resolve_and_dereference_verification_method(
-            routing_key.did
+            routing_key
         )
         return crypto.public_key_to_v1_kid(
             crypto.verification_method_to_public_key(routing_key_vm)
