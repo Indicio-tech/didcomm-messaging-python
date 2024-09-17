@@ -10,6 +10,7 @@ from pydid import DIDDocument, DIDUrl, VerificationMethod
 from pydid.service import DIDCommV1Service
 
 from didcomm_messaging.crypto import P, S, SecretsManager
+from didcomm_messaging.crypto.jwe import JweEnvelope
 from didcomm_messaging.resolver import DIDResolver
 from didcomm_messaging.v1.crypto.base import V1CryptoService
 from didcomm_messaging.v1.packaging import V1PackagingService
@@ -222,7 +223,7 @@ class V1DIDCommMessagingService(Generic[P, S]):
         crypto: V1CryptoService[P, S],
         secrets: SecretsManager[S],
         packaging: V1PackagingService[P, S],
-        encoded_message: bytes,
+        encoded_message: Union[JweEnvelope, str, bytes, dict, Any],
         **options,
     ) -> V1UnpackResult:
         """Unpack a message."""
@@ -285,7 +286,7 @@ class V1DIDCommMessaging(Generic[P, S]):
 
     async def unpack(
         self,
-        encoded_message: bytes,
+        encoded_message: Union[JweEnvelope, str, bytes, dict, Any],
         **options,
     ) -> V1UnpackResult:
         """Unpack a message."""
