@@ -6,7 +6,8 @@ import pytest
 import pytest_asyncio
 
 from didcomm_messaging.crypto.backend.askar import AskarKey, AskarSecretsManager
-from didcomm_messaging.resolver import DIDResolver
+from didcomm_messaging.resolver import DIDResolver, PrefixResolver
+from didcomm_messaging.resolver.key import DIDKey
 from didcomm_messaging.resolver.peer import Peer4
 from didcomm_messaging.v1.crypto.askar import AskarV1CryptoService
 from didcomm_messaging.v1.crypto.nacl import (
@@ -51,7 +52,12 @@ def packer():
 
 @pytest.fixture
 def resolver():
-    yield Peer4()
+    yield PrefixResolver(
+        {
+            "did:peer:4": Peer4(),
+            "did:key": DIDKey(),
+        }
+    )
 
 
 @pytest.fixture

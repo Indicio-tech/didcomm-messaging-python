@@ -1,6 +1,6 @@
 """V1PackagingService interface."""
 
-from typing import Generic, Optional, Sequence, Tuple, Union
+from typing import Any, Generic, Optional, Sequence, Tuple, Union
 
 from didcomm_messaging.crypto.base import P, S, SecretsManager
 from didcomm_messaging.crypto.jwe import JweEnvelope, JweRecipient
@@ -82,7 +82,7 @@ class V1PackagingService(Generic[P, S]):
         self,
         crypto: V1CryptoService[P, S],
         secrets: SecretsManager[S],
-        enc_message: Union[JweEnvelope, str, bytes],
+        enc_message: Union[JweEnvelope, str, bytes, dict, Any],
     ) -> V1CryptoUnpackResult:
         """Unpack a DIDComm v1 message."""
         if isinstance(enc_message, (str, bytes)):
@@ -92,8 +92,10 @@ class V1PackagingService(Generic[P, S]):
                 raise V1PackagingServiceError("Invalid packed message")
         elif isinstance(enc_message, JweEnvelope):
             wrapper = enc_message
+        elif isinstance(enc_message, dict):
+            wrapper = JweEnvelope.deserialize(enc_message)
         else:
-            raise TypeError("Invalid enc_message")
+            raise TypeError("Invalid enc_message; expect envelope, str, bytes, or dict")
 
         recip_key, recip_data = await self.extract_packed_message_metadata(
             secrets, wrapper
