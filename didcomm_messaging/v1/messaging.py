@@ -3,10 +3,10 @@
 from dataclasses import dataclass
 import json
 import uuid
-from typing import Generic, Optional, Sequence, Union
+from typing import Any, Generic, Optional, Sequence, Union
 
 from pydantic import AnyUrl
-from pydid import DIDDocument, VerificationMethod
+from pydid import DIDDocument, DIDUrl, VerificationMethod
 from pydid.service import DIDCommV1Service
 
 from didcomm_messaging.crypto import P, S, SecretsManager
@@ -58,12 +58,33 @@ class Target:
 class V1DIDCommMessagingService(Generic[P, S]):
     """Main entrypoint for DIDComm Messaging."""
 
-    def vm_to_v1_kid(self, crypto: V1CryptoService, doc: DIDDocument, ref: str) -> str:
+    def local_vm_ref_to_v1_kid(
+        self, crypto: V1CryptoService, doc: DIDDocument, ref: str
+    ) -> str:
         """Convert a verification method ref to a DIDComm v1 kid."""
         return crypto.public_key_to_v1_kid(
             crypto.verification_method_to_public_key(
                 doc.dereference_as(VerificationMethod, ref)
             )
+        )
+
+    async def routing_key_to_kid(
+        self,
+        crypto: V1CryptoService[P, S],
+        resolver: DIDResolver,
+        doc: DIDDocument,
+        routing_key: DIDUrl,
+    ) -> str:
+        """Resolve routing key to a kid."""
+        if routing_key.did is None or routing_key.did == doc.id:
+            return self.local_vm_ref_to_v1_kid(crypto, doc, routing_key)
+
+        assert routing_key.did != doc.id
+        routing_key_vm = await resolver.resolve_and_dereference_verification_method(
+            routing_key.did
+        )
+        return crypto.public_key_to_v1_kid(
+            crypto.verification_method_to_public_key(routing_key_vm)
         )
 
     async def did_to_target(
@@ -81,19 +102,11 @@ class V1DIDCommMessagingService(Generic[P, S]):
         target = services[0]
 
         recipient_keys = [
-            self.vm_to_v1_kid(crypto, doc, recip) for recip in target.recipient_keys
+            self.local_vm_ref_to_v1_kid(crypto, doc, recip)
+            for recip in target.recipient_keys
         ]
         routing_keys = [
-            crypto.public_key_to_v1_kid(
-                crypto.verification_method_to_public_key(
-                    VerificationMethod(
-                        id=routing_key,
-                        type="Ed25519VerificationKey2020",
-                        controller=routing_key.split("#")[0],
-                        public_key_multibase=routing_key.split("#")[1],
-                    )
-                )
-            )
+            await self.routing_key_to_kid(crypto, resolver, doc, routing_key)
             for routing_key in target.routing_keys
         ]
         endpoint = target.service_endpoint
@@ -121,11 +134,12 @@ class V1DIDCommMessagingService(Generic[P, S]):
         target = services[0]
 
         recipient_keys = [
-            self.vm_to_v1_kid(crypto, doc, recip) for recip in target.recipient_keys
+            self.local_vm_ref_to_v1_kid(crypto, doc, recip)
+            for recip in target.recipient_keys
         ]
         return recipient_keys[0]
 
-    def forward_wrap(self, to: str, msg: str) -> bytes:
+    def forward_wrap(self, to: str, msg: dict) -> bytes:
         """Wrap a message in a forward."""
         forward = {
             "@id": str(uuid.uuid4()),
@@ -141,7 +155,7 @@ class V1DIDCommMessagingService(Generic[P, S]):
         resolver: DIDResolver,
         secrets: SecretsManager[S],
         packaging: V1PackagingService[P, S],
-        message: Union[dict, str, bytes],
+        message: Union[dict, str, bytes, Any],
         to: Union[str, Target],
         frm: Optional[str] = None,
         **options,
