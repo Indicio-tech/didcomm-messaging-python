@@ -91,7 +91,9 @@ class CryptoService(ABC, Generic[P, S]):
         """Encode a message into DIDComm v2 anonymous encryption."""
 
     @abstractmethod
-    async def ecdh_es_decrypt(self, wrapper: Union[str, bytes], recip_key: S) -> bytes:
+    async def ecdh_es_decrypt(
+        self, enc_message: Union[str, bytes], recip_key: S
+    ) -> bytes:
         """Decode a message from DIDComm v2 anonymous encryption."""
 
     @abstractmethod
@@ -106,7 +108,7 @@ class CryptoService(ABC, Generic[P, S]):
     @abstractmethod
     async def ecdh_1pu_decrypt(
         self,
-        wrapper: Union[str, bytes],
+        enc_message: Union[str, bytes],
         recip_key: S,
         sender_key: P,
     ) -> bytes:
@@ -121,7 +123,7 @@ class CryptoService(ABC, Generic[P, S]):
 class SecretsManager(ABC, Generic[S]):
     """Secrets Resolver interface.
 
-    Thie secrets resolver may be used to supplement the CryptoService backend to provide
+    The secrets resolver may be used to supplement the CryptoService backend to provide
     greater flexibility.
     """
 
