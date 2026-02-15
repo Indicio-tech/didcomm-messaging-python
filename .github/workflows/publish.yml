@@ -12,13 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
-        uses: pdm-project/setup-pdm@v4
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: 3.9
+          python-version: "3.11"
           cache: true
       - name: Install dependencies
-        run: pdm install
+        run: uv sync --all-extras
       - name: Run pytest
-        run: pdm run pytest
+        run: uv run pytest
+      - name: Build
+        run: uv build
       - name: Publish
-        run: pdm publish
+        run: uv publish

@@ -11,11 +11,23 @@ dependencies = [
     "base58>=2.1.1",
     "pydid>=0.5.1",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 readme = "README.md"
 license = {text = "Apache-2.0"}
 
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-ruff>=0.1.1",
+    "pre-commit>=3.5.0",
+    "ruff>=0.4.1",
+    "pytest-asyncio>=0.23.7",
+    "pytest-cov>=4.1.0",
+]
 askar = [
     "aries-askar>=0.2.9",
 ]
@@ -34,20 +46,6 @@ legacy = [
 nacl = [
     "msgpack>=1.0.8",
     "PyNaCl>=1.5.0",
-]
-
-[build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
-
-[tool.pdm.dev-dependencies]
-dev = [
-    "pytest>=7.4.3",
-    "pytest-ruff>=0.1.1",
-    "pre-commit>=3.5.0",
-    "ruff>=0.4.1",
-    "pytest-asyncio>=0.23.7",
-    "pytest-cov>=4.1.0",
 ]
 
 [tool.pytest.ini_options]
