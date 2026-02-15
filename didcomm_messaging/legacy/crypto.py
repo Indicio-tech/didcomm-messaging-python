@@ -160,8 +160,7 @@ def sign_message_field(field_value: Dict, signer: str, secret: bytes) -> Dict:
     )
 
     return {
-        "@type": "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec"
-        "/signature/1.0/ed25519Sha512_single",
+        "@type": "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/signature/1.0/ed25519Sha512_single",
         "signer": signer,
         "sig_data": sig_data,
         "signature": signature,
