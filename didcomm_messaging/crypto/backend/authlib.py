@@ -104,6 +104,17 @@ class AuthlibKey(PublicKey):
             key = cls.multikey_to_key(multikey)
             return cls(key, kid)
 
+        if vm.type == "JsonWebKey2020":
+            jwk = vm.public_key_jwk
+            if not jwk:
+                raise ValueError("JWK verification method missing key")
+
+            try:
+                key = JsonWebKey.import_key(jwk)
+            except Exception as err:
+                raise ValueError("Invalid JWK") from err
+            return cls(key, kid)
+
         codec = cls.type_to_codec.get(vm.type)
         if not codec:
             raise ValueError("Unsupported verification method type: {vm_type}")
