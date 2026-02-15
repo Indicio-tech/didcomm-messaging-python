@@ -1,11 +1,12 @@
 """PackagingService interface."""
 
-from dataclasses import dataclass
 import hashlib
+from dataclasses import dataclass
 from typing import Generic, Literal, Optional, Sequence, Tuple, Union
 
 from pydid import DIDUrl, VerificationMethod
-from didcomm_messaging.crypto import P, S, CryptoService, SecretsManager
+
+from didcomm_messaging.crypto import CryptoService, P, S, SecretsManager
 from didcomm_messaging.crypto.jwe import JweEnvelope, b64url, from_b64url
 from didcomm_messaging.resolver import DIDResolver
 
@@ -40,7 +41,9 @@ class PackagingService(Generic[P, S]):
         if not alg:
             raise PackagingServiceError("Missing alg header")
 
-        method = next((m for m in ("ECDH-1PU", "ECDH-ES") if m in alg), None)
+        method: Literal["ECDH-1PU", "ECDH-ES"] | None = next(
+            (m for m in ("ECDH-1PU", "ECDH-ES") if m in alg), None
+        )
         if not method:
             raise PackagingServiceError(
                 f"Unsupported DIDComm encryption algorithm: {alg}"
@@ -171,7 +174,6 @@ class PackagingService(Generic[P, S]):
         message: bytes,
         to: Sequence[str],
         frm: Optional[str] = None,
-        **options,
     ):
         """Pack a DIDComm message."""
         recip_keys = [

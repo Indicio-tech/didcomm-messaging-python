@@ -11,7 +11,7 @@ repos:
     rev: v0.4.5
     hooks:
       - id: ruff
-        stages: [commit]
+        stages: [pre-commit]
         args: ["--fix", "--exit-non-zero-on-fix"]
       - id: ruff-format
-        stages: [commit]
+        stages: [pre-commit]
