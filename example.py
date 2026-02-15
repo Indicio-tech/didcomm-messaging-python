@@ -15,9 +15,8 @@ async def main():
     """An example of using DIDComm Messaging."""
     secrets = InMemorySecretsManager()
     crypto = AskarCryptoService()
-    packer = PackagingService(
-        PrefixResolver({"did:peer:2": Peer2(), "did:peer:4": Peer4()}), crypto, secrets
-    )
+    resolver = PrefixResolver({"did:peer:2": Peer2(), "did:peer:4": Peer4()})
+    packer = PackagingService()
     verkey = Key.generate(KeyAlg.ED25519)
     xkey = Key.generate(KeyAlg.X25519)
     did = generate(
@@ -39,9 +38,9 @@ async def main():
     await secrets.add_secret(AskarSecretKey(verkey, f"{did}#key-1"))
     await secrets.add_secret(AskarSecretKey(xkey, f"{did}#key-2"))
     print(did)
-    packed = await packer.pack(b"hello world", [did], did)
+    packed = await packer.pack(crypto, resolver, secrets, b"hello world", [did], did)
     print(json.dumps(json.loads(packed), indent=2))
-    unpacked = await packer.unpack(packed)
+    unpacked = await packer.unpack(crypto, resolver, secrets, packed)
     print(unpacked)
 
 
