@@ -22,3 +22,5 @@ jobs:
         run: uv sync --all-extras
       - name: Run pytest
         run: uv run pytest
+      - name: Run examples
+        run: uv run pytest examples/
