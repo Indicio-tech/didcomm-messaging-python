@@ -13,7 +13,7 @@ jobs:
     name: Format and Lint Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: astral-sh/ruff-action@v3
         with:
           version: "0.15.1"
