@@ -24,3 +24,9 @@ jobs:
         run: uv run pytest
       - name: Run examples
         run: uv run pytest examples/
+
+      - uses: SonarSource/sonarqube-scan-action@v8
+        if: matrix.python-version == '3.11'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
